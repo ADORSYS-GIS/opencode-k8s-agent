@@ -1,0 +1,75 @@
+# Helm
+*.tgz
+charts/
+Chart.lock
+
+# Kubernetes
+*.kubeconfig
+kubeconfig
+*.key
+*.crt
+*.pem
+
+# Secrets and sensitive data
+*secret*.yaml
+*secrets*.yaml
+*.env
+.env.*
+!.env.example
+
+# IDE and editors
+.vscode/
+.idea/
+./kiro
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.log
+
+# ArgoCD local testing
+argocd-local/
+test-values/
+*-override.yaml
+!argocd-override-example.yaml
+
+# Terraform (if used)
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Node.js (if used for tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+.dockerignore
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.orig
+*.rej
