@@ -1,0 +1,13 @@
+---
+# Source: apprise-api/charts/app-template/templates/common.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apprise-api
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: apprise-api
+    helm.sh/chart: app-template-5.0.0
+  namespace: default

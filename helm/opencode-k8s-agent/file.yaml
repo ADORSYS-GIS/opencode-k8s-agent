@@ -1,0 +1,13 @@
+---
+# Source: opencode-k8s-agent/charts/app-template/templates/common.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opencode-k8s-agent
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opencode-k8s-agent
+    helm.sh/chart: app-template-5.0.0
+  namespace: default

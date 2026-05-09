@@ -1,0 +1,32 @@
+{
+  "logLevel": "DEBUG",
+  "provider": {
+    "lightbridge": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "${OPENCODE_BASE_URL}",
+        "apiKey": "${OPENCODE_API_KEY}"
+      },
+      "models": {
+        "${OPENCODE_MODEL}": {
+          "id": "${OPENCODE_MODEL}",
+          "tool_call": true
+        }
+      }
+    }
+  },
+  "agent": {
+    "coder": {
+      "model": "lightbridge:${OPENCODE_MODEL}"
+    }
+  },
+  "mcp": {
+    "kubernetes": {
+      "type": "local",
+      "command": [
+        "/usr/local/bin/kubernetes-mcp-server"
+      ],
+      "enabled": true
+    }
+  }
+}

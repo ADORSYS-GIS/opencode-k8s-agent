@@ -1,0 +1,11 @@
+apiVersion: v2
+name: opencode-k8s-agent
+description: OpenCode K8s Review Agent with Kubernetes MCP
+type: application
+version: 0.1.0
+appVersion: "1.0"
+kubeVersion: ">=1.24.0-0"
+dependencies:
+  - name: app-template
+    version: 5.0.0
+    repository: https://bjw-s-labs.github.io/helm-charts

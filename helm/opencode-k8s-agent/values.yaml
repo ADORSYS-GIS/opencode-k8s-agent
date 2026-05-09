@@ -1,0 +1,152 @@
+---
+global:
+  nameOverride: opencode-k8s-agent
+  fullnameOverride: opencode-k8s-agent
+
+app-template:
+  image:
+    repository: ghcr.io/adorsys-gis/opencode-k8s-agent
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  controller:
+    type: cronjob
+    cronjob:
+      schedule: "0 */12 * * *"
+      concurrencyPolicy: Forbid
+      failedJobsHistoryLimit: 1
+      successfulJobsHistoryLimit: 1
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      restartPolicy: Never
+    podSpec:
+      containers:
+        main:
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/config/run.sh"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: docs
+              mountPath: /docs
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: opencode-k8s-agent-config
+        - name: docs
+          configMap:
+            name: opencode-k8s-agent-docs
+
+  serviceAccount:
+    annotations: {}
+
+  env:
+    OPENCODE_MODEL: "minimax-m2p7"
+    OPENCODE_BASE_URL: "https://api.ai.camer.digital/v1"
+    APPRISE_API_URL: "http://apprise-api:8000"
+    KEYCLOAK_URL: "https://auth.verif.fyi"
+    KEYCLOAK_REALM: "camer-digital"
+    KEYCLOAK_CLIENT_ID: "opencode-k8s"
+
+  envFrom:
+    - secretRef:
+        name: opencode-k8s-agent-secrets
+
+  secret:
+    opencode-k8s-agent-secrets:
+      data:
+        OPENCODE_API_KEY: ""
+        APPRISE_URLS: ""
+        KEYCLOAK_CLIENT_SECRET: ""
+
+  configmap:
+    opencode-k8s-agent-config:
+      files:
+        opencode.json: ./files/runtime/opencode.json
+        prompt.md: ./files/runtime/prompt.md
+        run.sh: ./files/runtime/run.sh
+    opencode-k8s-agent-docs:
+      files:
+        runbook.md: ./files/docs/runbook.md
+        custom-resources.md: ./files/docs/custom-resources.md
+
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+rbac:
+  create: true
+  clusterRole:
+    name: opencode-k8s-agent-readonly
+    rules:
+      - apiGroups: [""]
+        resources: [nodes, pods, pods/log, events, services, endpoints, configmaps, persistentvolumeclaims]
+        verbs: [get, list, watch]
+      - apiGroups: ["apps"]
+        resources: [deployments, statefulsets, daemonsets]
+        verbs: [get, list, watch]
+      - apiGroups: ["batch"]
+        resources: [jobs, cronjobs]
+        verbs: [get, list, watch]
+      - apiGroups: ["networking.k8s.io"]
+        resources: [ingresses]
+        verbs: [get, list, watch]
+      - apiGroups: ["autoscaling"]
+        resources: [horizontalpodautoscalers]
+        verbs: [get, list, watch]
+      - apiGroups: ["apiextensions.k8s.io"]
+        resources: [customresourcedefinitions]
+        verbs: [get, list, watch]
+      - apiGroups: ["postgresql.cnpg.io"]
+        resources: [clusters]
+        verbs: [get, list, watch]
+      - apiGroups: ["external-secrets.io"]
+        resources: [externalsecrets, secretstores, clustersecretstores]
+        verbs: [get, list, watch]
+      - apiGroups: ["cert-manager.io"]
+        resources: [certificates, certificaterequests, issuers, clusterissuers]
+        verbs: [get, list, watch]
+      - apiGroups: ["authorino.kuadrant.io"]
+        resources: [authconfigs]
+        verbs: [get, list, watch]
+
+  clusterRoleBinding:
+    create: true
+    name: opencode-k8s-agent-readonly-binding
+
+# Notification settings
+notifications:
+  discord:
+    enabled: true
+    webhookUrl: ""
+
+  slack:
+    enabled: false
+    webhookUrl: ""
+
+  email:
+    enabled: false
+    smtpHost: ""
+    smtpPort: 587
+    fromAddr: ""
+    toAddrs: []
+
+# OpenCode settings
+opencode:
+  model: minimax-m2p7
+  baseUrl: https://api.ai.camer.digital/v1
+  thinking: true
+
+# Keycloak OIDC settings
+keycloak:
+  enabled: true
+  url: https://auth.verif.fyi
+  realm: camer-digital
+  clientId: opencode-k8s

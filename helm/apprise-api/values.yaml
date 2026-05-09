@@ -1,0 +1,29 @@
+global:
+  nameOverride: apprise-api
+  fullnameOverride: apprise-api
+
+controllers:
+  main:
+    type: deployment
+    replicas: 1
+    containers:
+      main:
+        image:
+          repository: caronc/apprise
+          tag: "sha256:f20fcabea936abde3e910f23bb3ffab36dc350f0e1864aa7e565cad2ea5b547d"
+          pullPolicy: IfNotPresent
+
+service:
+  main:
+    controller: main
+    ports:
+      http:
+        port: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
