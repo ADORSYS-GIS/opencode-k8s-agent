@@ -1,86 +1,75 @@
----
-global:
-  nameOverride: opencode-k8s-agent
-  fullnameOverride: opencode-k8s-agent
+opencode-k8s-agent:
+  global:
+    nameOverride: opencode-k8s-agent
+    fullnameOverride: opencode-k8s-agent
 
-app-template:
-  image:
-    repository: ghcr.io/adorsys-gis/opencode-k8s-agent
-    tag: latest
-    pullPolicy: IfNotPresent
-
-  controller:
-    type: cronjob
-    cronjob:
-      schedule: "0 */12 * * *"
-      concurrencyPolicy: Forbid
-      failedJobsHistoryLimit: 1
-      successfulJobsHistoryLimit: 1
-      backoffLimit: 1
-      activeDeadlineSeconds: 3600
-      restartPolicy: Never
-    podSpec:
+  controllers:
+    main:
+      enabled: true
+      type: cronjob
+      cronjob:
+        schedule: "0 */12 * * *"
+        concurrencyPolicy: Forbid
+        successfulJobsHistory: 1
+        failedJobsHistory: 1
+        backoffLimit: 1
+        activeDeadlineSeconds: 3600
+      pod:
+        restartPolicy: Never
       containers:
         main:
-          imagePullPolicy: IfNotPresent
+          image:
+            repository: ghcr.io/adorsys-gis/opencode-k8s-agent
+            tag: latest
+            pullPolicy: IfNotPresent
           command: ["/bin/bash", "/config/run.sh"]
-          volumeMounts:
-            - name: config
-              mountPath: /config
-              readOnly: true
-            - name: docs
-              mountPath: /docs
-              readOnly: true
-      volumes:
-        - name: config
-          configMap:
-            name: opencode-k8s-agent-config
-        - name: docs
-          configMap:
-            name: opencode-k8s-agent-docs
+          env:
+            OPENCODE_MODEL: "minimax-m2p7"
+            OPENCODE_BASE_URL: "https://api.ai.camer.digital/v1"
+            APPRISE_API_URL: "http://apprise-api:8000"
+            KEYCLOAK_URL: "https://auth.verif.fyi"
+            KEYCLOAK_REALM: "camer-digital"
+            KEYCLOAK_CLIENT_ID: "opencode-k8s"
+          envFrom:
+            - secretRef:
+                name: opencode-k8s-agent-secrets
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
 
   serviceAccount:
-    annotations: {}
+    main:
+      enabled: true
 
-  env:
-    OPENCODE_MODEL: "minimax-m2p7"
-    OPENCODE_BASE_URL: "https://api.ai.camer.digital/v1"
-    APPRISE_API_URL: "http://apprise-api:8000"
-    KEYCLOAK_URL: "https://auth.verif.fyi"
-    KEYCLOAK_REALM: "camer-digital"
-    KEYCLOAK_CLIENT_ID: "opencode-k8s"
+  persistence:
+    runtime:
+      enabled: true
+      type: configMap
+      name: opencode-k8s-agent-config
+      globalMounts:
+        - path: /config
+          readOnly: true
+    docs:
+      enabled: true
+      type: configMap
+      name: opencode-k8s-agent-docs
+      globalMounts:
+        - path: /docs
+          readOnly: true
 
-  envFrom:
-    - secretRef:
-        name: opencode-k8s-agent-secrets
-
-  secret:
-    opencode-k8s-agent-secrets:
-      data:
+  secrets:
+    secrets:
+      enabled: true
+      stringData:
         OPENCODE_API_KEY: ""
         APPRISE_URLS: ""
         KEYCLOAK_CLIENT_SECRET: ""
 
-  configmap:
-    opencode-k8s-agent-config:
-      files:
-        opencode.json: ./files/runtime/opencode.json
-        prompt.md: ./files/runtime/prompt.md
-        run.sh: ./files/runtime/run.sh
-    opencode-k8s-agent-docs:
-      files:
-        runbook.md: ./files/docs/runbook.md
-        custom-resources.md: ./files/docs/custom-resources.md
-
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-
+# RBAC Configuration (custom - not part of app-template v4)
 rbac:
   create: true
   clusterRole:
@@ -116,7 +105,6 @@ rbac:
       - apiGroups: ["authorino.kuadrant.io"]
         resources: [authconfigs]
         verbs: [get, list, watch]
-
   clusterRoleBinding:
     create: true
     name: opencode-k8s-agent-readonly-binding
@@ -126,11 +114,9 @@ notifications:
   discord:
     enabled: true
     webhookUrl: ""
-
   slack:
     enabled: false
     webhookUrl: ""
-
   email:
     enabled: false
     smtpHost: ""
@@ -150,3 +136,21 @@ keycloak:
   url: https://auth.verif.fyi
   realm: camer-digital
   clientId: opencode-k8s
+
+# ConfigMap file contents (optional overrides)
+# If not specified, files from files/runtime/ and files/docs/ will be used
+configMaps:
+  runtime: {}
+    # opencode.json: |
+    #   { "logLevel": "INFO" }
+    # prompt.md: |
+    #   Custom prompt content
+    # run.sh: |
+    #   #!/bin/bash
+    #   echo "Custom script"
+  docs: {}
+    # custom-resources.md: |
+    #   Custom docs
+    # runbook.md: |
+    #   Custom runbook
+

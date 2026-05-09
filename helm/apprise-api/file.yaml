@@ -1,13 +1,66 @@
 ---
-# Source: apprise-api/charts/app-template/templates/common.yaml
----
+# Source: apprise-api/charts/apprise-api/templates/common.yaml
 apiVersion: v1
-kind: ServiceAccount
+kind: Service
 metadata:
   name: apprise-api
   labels:
     app.kubernetes.io/instance: release-name
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: apprise-api
-    helm.sh/chart: app-template-5.0.0
+    app.kubernetes.io/service: apprise-api
+    helm.sh/chart: apprise-api-4.6.2
   namespace: default
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/name: apprise-api
+---
+# Source: apprise-api/charts/apprise-api/templates/common.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apprise-api
+  labels:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: apprise-api
+    helm.sh/chart: apprise-api-4.6.2
+  namespace: default
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/controller: main
+      app.kubernetes.io/name: apprise-api
+      app.kubernetes.io/instance: release-name
+  template:
+    metadata:
+      labels: 
+        app.kubernetes.io/controller: main
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/name: apprise-api
+    spec: 
+      enableServiceLinks: false
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      hostIPC: false
+      hostNetwork: false
+      hostPID: false
+      dnsPolicy: ClusterFirst
+      containers: 
+        - image: caronc/apprise:sha256:f20fcabea936abde3e910f23bb3ffab36dc350f0e1864aa7e565cad2ea5b547d
+          imagePullPolicy: IfNotPresent
+          name: main

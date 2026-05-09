@@ -1,5 +1,5 @@
 ---
-# Source: opencode-k8s-agent/charts/app-template/templates/common.yaml
+# Source: opencode-k8s-agent/charts/opencode-k8s-agent/templates/common.yaml
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -9,5 +9,141 @@ metadata:
     app.kubernetes.io/instance: release-name
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: opencode-k8s-agent
-    helm.sh/chart: app-template-5.0.0
+    helm.sh/chart: opencode-k8s-agent-4.6.2
   namespace: default
+---
+# Source: opencode-k8s-agent/charts/opencode-k8s-agent/templates/common.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: opencode-k8s-agent
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opencode-k8s-agent
+    helm.sh/chart: opencode-k8s-agent-4.6.2
+  namespace: default
+stringData:
+  APPRISE_URLS: ""
+  KEYCLOAK_CLIENT_SECRET: ""
+  OPENCODE_API_KEY: ""
+---
+# Source: opencode-k8s-agent/charts/opencode-k8s-agent/templates/common.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-k8s-agent-config
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opencode-k8s-agent
+    helm.sh/chart: opencode-k8s-agent-4.6.2
+  namespace: default
+data:
+  opencode.json: |
+            
+  prompt.md: |
+            
+  run.sh: |
+---
+# Source: opencode-k8s-agent/charts/opencode-k8s-agent/templates/common.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-k8s-agent-docs
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opencode-k8s-agent
+    helm.sh/chart: opencode-k8s-agent-4.6.2
+  namespace: default
+data:
+  custom-resources.md: |
+            
+  runbook.md: |
+---
+# Source: opencode-k8s-agent/charts/opencode-k8s-agent/templates/common.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: opencode-k8s-agent
+  labels:
+    app.kubernetes.io/controller: main
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opencode-k8s-agent
+    helm.sh/chart: opencode-k8s-agent-4.6.2
+  namespace: default
+spec:
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 30
+  schedule: "0 */12 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3600
+      backoffLimit: 1
+      template:
+        metadata:
+          annotations: 
+            checksum/configMaps: e4e7115d33e09b34da4e641b011e3707fe2105fd50bda6733f8be41a51226434
+            checksum/secrets: 5d2afb7a4481a7b07519d0884cea03a4ba6d342afde2581f97c31b4db0e5d0dc
+          labels: 
+            app.kubernetes.io/controller: main
+            app.kubernetes.io/instance: release-name
+            app.kubernetes.io/name: opencode-k8s-agent
+        spec: 
+          enableServiceLinks: false
+          serviceAccountName: main
+          automountServiceAccountToken: true
+          hostIPC: false
+          hostNetwork: false
+          hostPID: false
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          containers: 
+            - command:
+              - /bin/bash
+              - /config/run.sh
+              env:
+              - name: APPRISE_API_URL
+                value: http://apprise-api:8000
+              - name: KEYCLOAK_CLIENT_ID
+                value: opencode-k8s
+              - name: KEYCLOAK_REALM
+                value: camer-digital
+              - name: KEYCLOAK_URL
+                value: https://auth.verif.fyi
+              - name: OPENCODE_BASE_URL
+                value: https://api.ai.camer.digital/v1
+              - name: OPENCODE_MODEL
+                value: minimax-m2p7
+              envFrom:
+              - secretRef:
+                  name: opencode-k8s-agent-secrets
+              image: ghcr.io/adorsys-gis/opencode-k8s-agent:latest
+              imagePullPolicy: IfNotPresent
+              name: main
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 1Gi
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+              volumeMounts:
+              - mountPath: /config
+                name: config
+                readOnly: true
+              - mountPath: /docs
+                name: docs
+                readOnly: true
+          volumes: 
+            - configMap:
+                name: opencode-k8s-agent-config
+              name: config
+            - configMap:
+                name: opencode-k8s-agent-docs
+              name: docs

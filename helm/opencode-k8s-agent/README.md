@@ -1,160 +1,205 @@
 # OpenCode K8s Agent Helm Chart
 
-OpenCode-powered Kubernetes cluster review agent with OIDC authentication and Apprise notifications.
+This Helm chart deploys the OpenCode K8s Review Agent with Kubernetes MCP integration.
 
-## Overview
+## Features
 
-This Helm chart deploys a CronJob that runs OpenCode to analyze your Kubernetes cluster and sends reports via Apprise.
-
-### Features
-
-- **OpenCode Agent**: Runs OpenCode with Kubernetes MCP for cluster analysis
-- **OIDC Authentication**: Authenticates to Keycloak using client credentials flow
-- **Apprise Notifications**: Sends reports via external Apprise API (Discord, Slack, Email, etc.)
-- **RBAC**: Configurable ClusterRole for cluster access
+- **CronJob-based execution**: Runs periodic cluster health checks
+- **ConfigMap management**: Supports both file-based defaults and ArgoCD overrides
+- **RBAC**: Read-only cluster access for investigation
+- **Secrets management**: Secure handling of API keys and credentials
+- **Notification integration**: Sends reports via Apprise API
 
 ## Installation
 
-```bash
-# Install Apprise API first (separate chart)
-helm repo add bjw-s-labs https://bjw-s-labs.github.io/helm-charts
-helm install apprise-api ./helm/apprise-api
+### Basic Installation
 
-# Then install the OpenCode agent
-helm install opencode-k8s-agent ./helm/opencode-k8s-agent
+```bash
+helm install opencode-k8s-agent . \
+  --set opencode-k8s-agent.secrets.secrets.stringData.OPENCODE_API_KEY="your-api-key" \
+  --set opencode-k8s-agent.secrets.secrets.stringData.APPRISE_URLS="discord://webhook-url"
 ```
+
+### With Custom Values
+
+```bash
+helm install opencode-k8s-agent . -f custom-values.yaml
+```
+
+## ConfigMap File Management
+
+This chart supports two methods for managing ConfigMap content:
+
+### Method 1: File-based (Default)
+
+By default, the chart loads files from the `files/` directory:
+
+- `files/runtime/` → `opencode-k8s-agent-config` ConfigMap
+  - `opencode.json` - OpenCode configuration
+  - `prompt.md` - Investigation prompt
+  - `run.sh` - Execution script
+  
+- `files/docs/` → `opencode-k8s-agent-docs` ConfigMap
+  - `custom-resources.md` - Custom resource investigation guide
+  - `runbook.md` - Operational runbook
+
+**No configuration needed** - files are automatically loaded.
+
+### Method 2: Values Override (ArgoCD-friendly)
+
+Override ConfigMap content via `values.yaml` or ArgoCD Application spec:
+
+```yaml
+configMaps:
+  runtime:
+    opencode.json: |
+      {
+        "logLevel": "INFO",
+        "provider": {
+          "custom": "configuration"
+        }
+      }
+    prompt.md: |
+      # Custom Prompt
+      Your custom content here
+    run.sh: |
+      #!/bin/bash
+      echo "Custom script"
+  docs:
+    custom-resources.md: |
+      # Custom Docs
+    runbook.md: |
+      # Custom Runbook
+```
+
+**When to use:**
+- ArgoCD deployments where you want environment-specific configurations
+- GitOps workflows where config is managed separately from the chart
+- Multi-environment deployments with different prompts/scripts
+
+See `argocd-override-example.yaml` for a complete example.
 
 ## Configuration
 
 ### Required Secrets
 
-Create a secret with the following keys:
-
 ```yaml
-secret:
-  opencode-k8s-agent-secrets:
-    data:
-      OPENCODE_API_KEY: ""        # Fallback API key (if not using OIDC)
-      APPRISE_URLS: ""            # Apprise notification URLs
-      KEYCLOAK_CLIENT_SECRET: ""  # Keycloak client secret (for OIDC)
-```
-
-### Apprise URLs
-
-The `APPRISE_URLS` secret accepts multiple notification URLs. Format:
-
-```
-discord://webhook_id/webhook_token
-slack://BotUserOAuthToken
-mailto://user:password@smtp.example.com
-tgram://bot_token/chat_id
-```
-
-Examples:
-
-```bash
-# Discord
-discord://123456789/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV
-
-# Slack
-slack://xoxb-bot-token
-
-# Multiple URLs (space-separated)
-"discord://... slack://... mailto://..."
-```
-
-### Keycloak OIDC
-
-Configure OIDC for token-based authentication:
-
-```yaml
-keycloak:
-  enabled: true
-  url: https://auth.verif.fyi
-  realm: camer-digital
-  clientId: opencode-k8s
-```
-
-The agent will:
-1. Fetch a token from Keycloak using client credentials
-2. Use the token as the API key for OpenCode/LightBridge
-
-### OpenCode Configuration
-
-```yaml
-opencode:
-  model: minimax-m2p7
-  baseUrl: https://api.ai.camer.digital/v1
-  thinking: true
+opencode-k8s-agent:
+  secrets:
+    secrets:
+      stringData:
+        OPENCODE_API_KEY: "your-api-key"
+        APPRISE_URLS: "discord://webhook-url"
+        KEYCLOAK_CLIENT_SECRET: "client-secret"  # Optional if using OIDC
 ```
 
 ### CronJob Schedule
 
 ```yaml
-app-template:
-  controller:
-    cronjob:
-      schedule: "0 */12 * * *"  # Every 12 hours
+opencode-k8s-agent:
+  controllers:
+    main:
+      cronjob:
+        schedule: "0 */12 * * *"  # Every 12 hours
 ```
 
-## Values Reference
+### Resource Limits
 
-| Value | Description | Default |
-|-------|-------------|---------|
-| `app-template.image.repository` | Docker image repository | `ghcr.io/adorsys-gis/opencode-k8s-agent` |
-| `app-template.image.tag` | Docker image tag | `latest` |
-| `app-template.controller.cronjob.schedule` | Cron schedule | `0 */12 * * *` |
-| `opencode.model` | OpenCode model | `minimax-m2p7` |
-| `opencode.baseUrl` | API base URL | `https://api.ai.camer.digital/v1` |
-| `keycloak.enabled` | Enable OIDC | `true` |
-| `keycloak.url` | Keycloak URL | `https://auth.verif.fyi` |
-| `keycloak.realm` | Keycloak realm | `camer-digital` |
-| `keycloak.clientId` | Keycloak client ID | `opencode-k8s` |
-| `apprise-api.enabled` | Enable Apprise API | `true` |
-
-## Files Configuration
-
-The chart loads configuration files from the `files/` directory:
-
-| File | Purpose |
-|------|---------|
-| `opencode.json` | OpenCode provider & model configuration |
-| `prompt.md` | System prompt for the agent |
-| `run.sh` | Entry point script |
-| `runbook.md` | Cluster investigation runbook |
-| `custom-resources.md` | Custom resources to check |
-
-Edit these files directly in `helm/opencode-k8s-agent/files/` and they will be mounted as ConfigMaps.
+```yaml
+opencode-k8s-agent:
+  controllers:
+    main:
+      containers:
+        main:
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+```
 
 ## RBAC
 
 The chart creates a ClusterRole with read-only access to:
+- Core resources (pods, services, configmaps, etc.)
+- Workload resources (deployments, statefulsets, jobs, etc.)
+- Custom resources (CNPG clusters, ExternalSecrets, etc.)
 
-- Nodes, Pods, Services, Events, ConfigMaps
-- Deployments, StatefulSets, DaemonSets
-- Jobs, CronJobs
-- Ingresses, HPA
-- Custom Resources (CNPG, External Secrets, Certificates, Authorino)
+To disable RBAC:
+
+```yaml
+rbac:
+  create: false
+```
+
+## Testing
+
+### Lint the chart
+
+```bash
+helm lint .
+```
+
+### Template and inspect
+
+```bash
+helm template test-opencode . | less
+```
+
+### Test with overrides
+
+```bash
+helm template test-opencode . -f custom-values.yaml
+```
+
+### Verify ConfigMaps
+
+```bash
+helm template test-opencode . | grep -A 30 "kind: ConfigMap"
+```
+
+## ArgoCD Integration
+
+See `argocd-override-example.yaml` for a complete ArgoCD Application example with values overrides.
+
+Key points:
+- Use `spec.source.helm.values` to override ConfigMap content
+- Files from the chart are used as defaults
+- Overrides completely replace the default content (not merged)
 
 ## Troubleshooting
+
+### ConfigMaps are empty
+
+Check that either:
+1. Files exist in `files/runtime/` and `files/docs/` directories, OR
+2. You've provided overrides in `configMaps.runtime` and `configMaps.docs`
+
+### CronJob not running
+
+Check:
+```bash
+kubectl get cronjob opencode-k8s-agent
+kubectl describe cronjob opencode-k8s-agent
+```
 
 ### Check logs
 
 ```bash
-kubectl logs -n monitoring-tests job/<job-name>
+# Get the latest job
+kubectl get jobs -l app.kubernetes.io/name=opencode-k8s-agent
+
+# View logs
+kubectl logs -l job-name=<job-name>
 ```
 
-### Manual run
+## Dependencies
 
-```bash
-kubectl create job -n monitoring-tests --from=cronjob/opencode-k8s-agent manual-run
-```
+- **bjw-s app-template**: v4.6.2
+- **Kubernetes**: >= 1.22.0
 
-### Test Apprise connectivity
+## License
 
-```bash
-curl -X POST "http://apprise-api:8000/notify" \
-  -F "body=Test message" \
-  -F "title=Test" \
-  -F "url=discord://test"
-```
+See parent repository for license information.

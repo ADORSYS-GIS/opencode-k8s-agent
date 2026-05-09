@@ -1,0 +1,45 @@
+{{- $files := .Files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-k8s-agent-config
+  labels:
+    app.kubernetes.io/name: opencode-k8s-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+{{- if .Values.configMaps.runtime }}
+  {{- range $key, $value := .Values.configMaps.runtime }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
+{{- else }}
+  {{- range $path, $_ := $files.Glob "files/runtime/**" }}
+  {{ base $path }}: |
+{{ $files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencode-k8s-agent-docs
+  labels:
+    app.kubernetes.io/name: opencode-k8s-agent
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+{{- if .Values.configMaps.docs }}
+  {{- range $key, $value := .Values.configMaps.docs }}
+  {{ $key }}: |
+{{ $value | indent 4 }}
+  {{- end }}
+{{- else }}
+  {{- range $path, $_ := $files.Glob "files/docs/**" }}
+  {{ base $path }}: |
+{{ $files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}
