@@ -1,0 +1,33 @@
+# Basic Configuration Example
+# This is the minimal configuration needed to get started
+
+opencode-k8s-agent:
+  controllers:
+    main:
+      cronjob:
+        # Run every 12 hours
+        schedule: "0 */12 * * *"
+      
+      containers:
+        main:
+          env:
+            # Use OpenAI GPT-4
+            OPENCODE_MODEL: "gpt-4"
+            OPENCODE_BASE_URL: "https://api.openai.com/v1"
+            
+            # Apprise API running in same namespace
+            APPRISE_API_URL: "http://apprise-api:8000"
+  
+  secrets:
+    secrets:
+      stringData:
+        # Set these values before installing
+        OPENCODE_API_KEY: "sk-your-openai-api-key"
+        APPRISE_URLS: "discord://webhook-id/webhook-token"
+
+# Use default RBAC (read-only access)
+rbac:
+  create: true
+
+# Use default prompts and documentation
+# (no configMaps override needed)

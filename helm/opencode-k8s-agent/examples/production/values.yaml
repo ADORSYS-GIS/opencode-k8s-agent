@@ -1,0 +1,384 @@
+# Production Configuration Example
+# This configuration includes custom prompts, multiple notification channels,
+# and production-ready settings
+
+opencode-k8s-agent:
+  controllers:
+    main:
+      cronjob:
+        # Run every 4 hours in production
+        schedule: "0 */4 * * *"
+        
+        # Keep more history for debugging
+        successfulJobsHistory: 3
+        failedJobsHistory: 3
+        
+        # Allow 2 hours for large clusters
+        activeDeadlineSeconds: 7200
+      
+      containers:
+        main:
+          image:
+            # Pin to specific version in production
+            tag: "v1.0.0"
+            pullPolicy: IfNotPresent
+          
+          env:
+            OPENCODE_MODEL: "gpt-4"
+            OPENCODE_BASE_URL: "https://api.openai.com/v1"
+            APPRISE_API_URL: "http://apprise-api:8000"
+          
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+  
+  secrets:
+    secrets:
+      stringData:
+        OPENCODE_API_KEY: ""  # Set via external secret or sealed secret
+        # Multiple notification channels
+        APPRISE_URLS: "discord://webhook-url slack://token email://smtp-config"
+
+rbac:
+  create: true
+  clusterRole:
+    # Add custom resources specific to your cluster
+    rules:
+      # Default rules...
+      - apiGroups: [""]
+        resources: [nodes, pods, pods/log, events, services, endpoints, configmaps, persistentvolumeclaims]
+        verbs: [get, list, watch]
+      - apiGroups: ["apps"]
+        resources: [deployments, statefulsets, daemonsets]
+        verbs: [get, list, watch]
+      - apiGroups: ["batch"]
+        resources: [jobs, cronjobs]
+        verbs: [get, list, watch]
+      - apiGroups: ["networking.k8s.io"]
+        resources: [ingresses]
+        verbs: [get, list, watch]
+      - apiGroups: ["autoscaling"]
+        resources: [horizontalpodautoscalers]
+        verbs: [get, list, watch]
+      - apiGroups: ["apiextensions.k8s.io"]
+        resources: [customresourcedefinitions]
+        verbs: [get, list, watch]
+      # Custom resources for your infrastructure
+      - apiGroups: ["postgresql.cnpg.io"]
+        resources: [clusters, backups]
+        verbs: [get, list, watch]
+      - apiGroups: ["external-secrets.io"]
+        resources: [externalsecrets, secretstores]
+        verbs: [get, list, watch]
+      - apiGroups: ["cert-manager.io"]
+        resources: [certificates, certificaterequests, issuers]
+        verbs: [get, list, watch]
+
+# Custom prompt for production environment
+configMaps:
+  runtime:
+    prompt.md: |
+      You are a Kubernetes cluster investigation agent for a PRODUCTION environment.
+      
+      Your role is to analyze the cluster and produce a structured operational report.
+      
+      You MUST rely on tool outputs. Do not guess.
+      You MUST NOT modify cluster resources.
+      
+      ## 🛡️ Investigation Process
+      
+      1. **Initial Context**: Read documentation in `/docs` to understand the infrastructure.
+      
+      2. **Critical Services** (Namespace: `production`):
+         - `api-gateway` - Customer-facing API (SLA: 99.9%)
+         - `web-frontend` - Web application (SLA: 99.9%)
+         - `payment-service` - Payment processing (SLA: 99.95%)
+         - `order-processor` - Order fulfillment (SLA: 99.5%)
+      
+      3. **Databases** (Namespace: `databases`):
+         - PostgreSQL clusters (managed by CloudNativePG)
+         - Redis caches
+      
+      4. **Background Jobs** (Namespace: `jobs`):
+         - `email-sender` - Transactional emails
+         - `report-generator` - Daily reports
+         - `data-sync` - External system sync
+      
+      ## 📋 Investigation Tasks
+      
+      1. **Critical Service Health**:
+         - Check if all critical services are Running
+         - Look for pods with RESTARTS > 5 in last 24h
+         - Check for CrashLoopBackOff or ImagePullBackOff
+      
+      2. **Resource Pressure**:
+         - Identify nodes with DiskPressure or MemoryPressure
+         - Find pods near CPU/memory limits (>80%)
+         - Check for pending PVCs
+      
+      3. **Database Health**:
+         - Verify all PostgreSQL clusters have INSTANCES = READY
+         - Check for failed backups in last 24h
+         - Verify Redis pods are healthy
+      
+      4. **Background Jobs**:
+         - Check for failed CronJobs in last 24h
+         - Verify scheduled jobs are running on time
+         - Look for jobs stuck in Running state
+      
+      5. **Events & Errors**:
+         - Extract Warning/Error events from last 12 hours
+         - Focus on events in production, databases, jobs namespaces
+         - Ignore events in kube-system unless critical
+      
+      6. **Custom Resources**:
+         - Check Certificate resources for expiration
+         - Verify ExternalSecrets are synced
+         - Check Ingress resources are healthy
+      
+      ## 📄 Reporting Format
+      
+      Your final response MUST follow this template:
+      
+      # Executive Summary
+      [One paragraph: overall cluster health, number of issues found, severity]
+      
+      ## 🚨 Critical Issues
+      [Issues requiring IMMEDIATE attention - service outages, data loss risk]
+      
+      ## ⚠️ Warnings
+      [Issues requiring attention within 24h - degraded performance, approaching limits]
+      
+      ## 📊 Service Health
+      [Status of api-gateway, web-frontend, payment-service, order-processor]
+      
+      ## 💾 Database Status
+      [PostgreSQL cluster health, Redis availability, backup status]
+      
+      ## ⏰ Background Jobs
+      [Status of email-sender, report-generator, data-sync]
+      
+      ## 📈 Resource Utilization
+      [Node resource usage, pods near limits, storage consumption]
+      
+      ## 💡 Recommendations
+      [Actionable steps to resolve issues and improve cluster health]
+      
+      ---
+      
+      If no issues are found, explicitly state: "✅ All systems operational. No issues detected."
+  
+  docs:
+    runbook.md: |
+      # Production Cluster Runbook
+      
+      ## Service Map
+      
+      ### Critical Services (Namespace: production)
+      
+      #### API Gateway
+      - **Deployment**: `api-gateway`
+      - **Replicas**: 3 (minimum)
+      - **Dependencies**: Redis cache, PostgreSQL
+      - **SLA**: 99.9% uptime
+      - **Alert Threshold**: > 3 restarts/hour
+      - **Escalation**: Page on-call engineer
+      
+      #### Web Frontend
+      - **Deployment**: `web-frontend`
+      - **Replicas**: 5 (minimum)
+      - **Dependencies**: API Gateway
+      - **SLA**: 99.9% uptime
+      - **Alert Threshold**: > 5 restarts/hour
+      - **Escalation**: Page on-call engineer
+      
+      #### Payment Service
+      - **Deployment**: `payment-service`
+      - **Replicas**: 3 (minimum)
+      - **Dependencies**: PostgreSQL, Stripe API
+      - **SLA**: 99.95% uptime
+      - **Alert Threshold**: ANY restart or error
+      - **Escalation**: IMMEDIATE page to on-call + team lead
+      
+      #### Order Processor
+      - **Deployment**: `order-processor`
+      - **Replicas**: 2 (minimum)
+      - **Dependencies**: PostgreSQL, RabbitMQ
+      - **SLA**: 99.5% uptime
+      - **Alert Threshold**: > 10 restarts/hour
+      - **Escalation**: Page on-call engineer
+      
+      ### Databases (Namespace: databases)
+      
+      #### PostgreSQL Clusters
+      - **main-db**: Primary application database
+      - **payments-db**: Payment transaction database (CRITICAL)
+      - **analytics-db**: Analytics and reporting
+      
+      **Health Check**: `kubectl get cluster -n databases`
+      **Backup Schedule**: Daily at 2 AM UTC
+      **Retention**: 30 days
+      
+      #### Redis Caches
+      - **session-cache**: User session storage
+      - **api-cache**: API response cache
+      
+      ### Background Jobs (Namespace: jobs)
+      
+      | Job | Schedule | Purpose | Failure Impact |
+      |-----|----------|---------|----------------|
+      | email-sender | */5 * * * * | Send transactional emails | High - customer communication |
+      | report-generator | 0 6 * * * | Generate daily reports | Medium - business metrics |
+      | data-sync | 0 */4 * * * | Sync with external systems | Medium - data consistency |
+      
+      ## Known Issues
+      
+      ### Issue: API Gateway pods restart during traffic spikes
+      - **Cause**: Memory limit too low (512Mi)
+      - **Mitigation**: HPA scales to 10 replicas during spikes
+      - **Long-term Fix**: Increase memory limit to 1Gi (planned Q2)
+      
+      ### Issue: Payment service occasionally times out
+      - **Cause**: Stripe API latency during peak hours
+      - **Mitigation**: Retry logic with exponential backoff
+      - **Long-term Fix**: Implement circuit breaker pattern (planned Q3)
+      
+      ### Issue: PostgreSQL backups occasionally fail
+      - **Cause**: S3 rate limiting during large backups
+      - **Mitigation**: Backups retry automatically after 1 hour
+      - **Long-term Fix**: Implement incremental backups (planned Q2)
+      
+      ## Escalation Procedures
+      
+      ### Severity Levels
+      
+      **P0 - Critical**: Service outage, data loss, security breach
+      - Response Time: Immediate
+      - Action: Page on-call + team lead + CTO
+      - Examples: Payment service down, database unavailable
+      
+      **P1 - High**: Degraded service, potential data loss
+      - Response Time: 15 minutes
+      - Action: Page on-call engineer
+      - Examples: High error rate, pod crash loops
+      
+      **P2 - Medium**: Performance degradation, non-critical failures
+      - Response Time: 1 hour
+      - Action: Notify on-call via Slack
+      - Examples: Background job failures, high resource usage
+      
+      **P3 - Low**: Minor issues, informational
+      - Response Time: Next business day
+      - Action: Create ticket
+      - Examples: Certificate expiring in 30 days, low disk space warning
+    
+    custom-resources.md: |
+      # Custom Resources Investigation Guide
+      
+      ## CloudNativePG Clusters
+      
+      ### Health Check
+      ```bash
+      kubectl get cluster -n databases
+      ```
+      
+      **Healthy State**: INSTANCES = READY
+      
+      ### Investigation Steps
+      
+      1. **Check cluster status**:
+         ```bash
+         kubectl describe cluster -n databases main-db
+         ```
+      
+      2. **Check controller logs**:
+         ```bash
+         kubectl logs -n cnpg-system deploy/cnpg-controller
+         ```
+      
+      3. **Check backup status**:
+         ```bash
+         kubectl get backup -n databases
+         ```
+      
+      4. **Check for failed backups**:
+         ```bash
+         kubectl get backup -n databases -o json | jq '.items[] | select(.status.phase != "completed")'
+         ```
+      
+      ### Common Issues
+      
+      **Issue**: Cluster shows INSTANCES < READY
+      - **Cause**: Pod scheduling failure, resource constraints
+      - **Fix**: Check pod events, verify node resources
+      
+      **Issue**: Backup failures
+      - **Cause**: S3 credentials, network issues, rate limiting
+      - **Fix**: Check barman-cloud logs, verify S3 access
+      
+      ## Cert-Manager Certificates
+      
+      ### Health Check
+      ```bash
+      kubectl get certificate -A
+      ```
+      
+      **Healthy State**: Ready = True
+      
+      ### Investigation Steps
+      
+      1. **Check certificate details**:
+         ```bash
+         kubectl describe certificate -n production api-gateway-tls
+         ```
+      
+      2. **Check cert-manager logs**:
+         ```bash
+         kubectl logs -n cert-manager deploy/cert-manager
+         ```
+      
+      3. **Check certificate expiration**:
+         ```bash
+         kubectl get certificate -A -o json | jq '.items[] | {name: .metadata.name, namespace: .metadata.namespace, notAfter: .status.notAfter}'
+         ```
+      
+      ### Common Issues
+      
+      **Issue**: Certificate shows Ready = False
+      - **Cause**: DNS01 challenge failure, rate limiting
+      - **Fix**: Check DNS provider, verify challenge records
+      
+      **Issue**: Certificate expiring soon
+      - **Cause**: Renewal failure, cert-manager not running
+      - **Fix**: Check cert-manager logs, manually trigger renewal
+      
+      ## External Secrets
+      
+      ### Health Check
+      ```bash
+      kubectl get externalsecret -A
+      ```
+      
+      **Healthy State**: SecretSynced = True
+      
+      ### Investigation Steps
+      
+      1. **Check secret status**:
+         ```bash
+         kubectl describe externalsecret -n production api-credentials
+         ```
+      
+      2. **Check external-secrets logs**:
+         ```bash
+         kubectl logs -n external-secrets-system deploy/external-secrets
+         ```
+      
+      ### Common Issues
+      
+      **Issue**: SecretSynced = False
+      - **Cause**: Provider authentication failure, secret not found
+      - **Fix**: Verify provider credentials, check secret path
