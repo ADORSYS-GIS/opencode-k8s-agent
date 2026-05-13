@@ -1,12 +1,4 @@
 apprise-api:
-  global:
-    nameOverride: apprise-api
-    fullnameOverride: apprise-api
-
-  image:
-    repository: caronc/apprise
-    tag: "sha256:f20fcabea936abde3e910f23bb3ffab36dc350f0e1864aa7e565cad2ea5b547d"
-    pullPolicy: IfNotPresent
 
   controllers:
     main:
@@ -16,8 +8,8 @@ apprise-api:
       containers:
         main:
           image:
-            repository: caronc/apprise
-            tag: "sha256:f20fcabea936abde3e910f23bb3ffab36dc350f0e1864aa7e565cad2ea5b547d"
+            repository: caronc/apprise@sha256:f20fcabea936abde3e910f23bb3ffab36dc350f0e1864aa7e565cad2ea5b547d
+            tag: ""
             pullPolicy: IfNotPresent
 
   service:
