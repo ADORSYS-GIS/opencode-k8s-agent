@@ -57,8 +57,37 @@ export OPENCODE_API_KEY="$KEYCLOAK_TOKEN"
 # OpenCode Configuration
 # ============================================================
 
-# Copy config — all values are read via {env:VAR} at runtime, no substitution needed
-cp /config/opencode.json opencode.json
+# Build opencode config at runtime using OPENCODE_CONFIG_CONTENT
+# This avoids any file templating — values are expanded by the shell before being passed
+export OPENCODE_CONFIG_CONTENT
+OPENCODE_CONFIG_CONTENT=$(cat <<EOF
+{
+  "permission": "allow",
+  "provider": {
+    "lightbridge": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LightBridge",
+      "options": {
+        "baseURL": "$OPENCODE_BASE_URL",
+        "apiKey": "$OPENCODE_API_KEY"
+      },
+      "models": {
+        "$OPENCODE_MODEL": {
+          "name": "$OPENCODE_MODEL"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "kubernetes": {
+      "type": "local",
+      "command": ["/usr/local/bin/kubernetes-mcp-server"],
+      "enabled": true
+    }
+  }
+}
+EOF
+)
 
 # Diagnostic: Check for tools
 echo "[Reporter] Verifying environment..."
