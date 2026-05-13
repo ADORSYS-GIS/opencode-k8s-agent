@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     && rm -rf /var/lib/apt/lists/*
 
-# Install opencode (sst/opencode — the real one, distributed via npm)
-RUN npm install -g opencode-ai@1.14.48
+# Install OpenCode CLI (via official install script)
+RUN curl -fsSL https://opencode.ai/install | bash && \
+    find /root/.opencode/bin -name opencode -exec mv {} /usr/local/bin/ \;
+
+ENV PATH="/root/.opencode/bin:${PATH}"
 
 # Install kubernetes-mcp-server
 RUN curl -fsSL -o /usr/local/bin/kubernetes-mcp-server \

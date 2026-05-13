@@ -57,60 +57,31 @@ export OPENCODE_API_KEY="$KEYCLOAK_TOKEN"
 # OpenCode Configuration
 # ============================================================
 
-# Build opencode config at runtime using OPENCODE_CONFIG_CONTENT
-# This avoids any file templating — values are expanded by the shell before being passed
-export OPENCODE_CONFIG_CONTENT
-OPENCODE_CONFIG_CONTENT=$(cat <<EOF
-{
-  "permission": "allow",
-  "provider": {
-    "lightbridge": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "LightBridge",
-      "options": {
-        "baseURL": "$OPENCODE_BASE_URL",
-        "apiKey": "$OPENCODE_API_KEY"
-      },
-      "models": {
-        "$OPENCODE_MODEL": {
-          "name": "$OPENCODE_MODEL"
-        }
-      }
-    }
-  },
-  "mcp": {
-    "kubernetes": {
-      "type": "local",
-      "command": ["/usr/local/bin/kubernetes-mcp-server"],
-      "enabled": true
-    }
-  }
-}
-EOF
-)
+# Generate final config from template — envsubst is safe here because
+# OPENCODE_API_KEY is already exported and will be substituted as a plain string.
+# OpenCode looks for opencode.json in the current working directory.
+envsubst < /config/opencode.json > opencode.json
 
 # Diagnostic: Check for tools
 echo "[Reporter] Verifying environment..."
 which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 [ -f /usr/local/bin/kubernetes-mcp-server ] || echo "[Reporter] Warning: MCP server binary not found"
 
-# Run opencode — response goes to stderr, stdout is empty in non-interactive mode
-# permission: "allow" in opencode.json covers external_directory and all MCP tool calls
-opencode run \
+# Run opencode with the prompt from the file
+opencode run "$(cat /config/prompt.md)" \
+  --agent coder \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
-  "$(cat /config/prompt.md)" \
-  2>"$REPORT_FILE" >/dev/null || true
+  --thinking \
+  > "$REPORT_FILE"
 
 # Validate report
 if [ ! -s "$REPORT_FILE" ]; then
-  echo "[Reporter] Error: Empty report generated — check opencode stderr above"
+  echo "[Reporter] Error: Empty report generated"
   exit 1
 fi
 
 echo "[Reporter] Report generated (Size: $(stat -c%s "$REPORT_FILE") bytes)"
-echo "[Reporter] Report contents:"
-cat "$REPORT_FILE"
 
 # Optional: Relaxed validation. We check for a common keyword but don't exit if missing
 if ! grep -qi "Summary" "$REPORT_FILE"; then
@@ -119,32 +90,29 @@ fi
 
 echo "[Reporter] Sending report via Apprise API..."
 
-# Filter out any thinking/reasoning blocks and truncate to 1800 chars
-# to stay under Discord's 2000 char limit
+# Filter out thinking blocks and truncate to 1800 chars to stay under Discord's 2000 char limit
 CLEAN_REPORT="/tmp/clean_report.txt"
 sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | grep -A 200 "# Executive Summary" | head -c 1800 > "$CLEAN_REPORT"
 
 # If the grep failed (no Executive Summary), just take the first 1800 chars
 if [ ! -s "$CLEAN_REPORT" ]; then
-    head -c 1800 "$REPORT_FILE" > "$CLEAN_REPORT"
+  head -c 1800 "$REPORT_FILE" > "$CLEAN_REPORT"
 fi
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
-echo "[Reporter] Apprise URL: ${APPRISE_API_URL}/notify"
-echo "[Reporter] Notification URLs: ${APPRISE_URLS}"
 
-# Send via Apprise API with file attachment
-# Apprise API expects multipart form data for file uploads
 TITLE="K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
 
-# Use multipart form data for file attachment support
-# The @ prefix tells curl to upload the file
 RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "body=<${CLEAN_REPORT}" \
   -F "title=${TITLE}" \
   -F "url=${APPRISE_URLS}" \
   -F "attach=@${REPORT_FILE}")
 
-echo "[Reporter] Apprise response: $RESPONSE"
+if echo "$RESPONSE" | grep -qi "success\|sent"; then
+  echo "[Reporter] Success: Report sent with attachment via Apprise API"
+else
+  echo "[Reporter] Warning: Apprise API response: $RESPONSE"
+fi
 
 echo "[Reporter] Execution complete"
