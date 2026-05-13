@@ -80,6 +80,8 @@ if [ ! -s "$REPORT_FILE" ]; then
 fi
 
 echo "[Reporter] Report generated (Size: $(stat -c%s "$REPORT_FILE") bytes)"
+echo "[Reporter] Report contents:"
+cat "$REPORT_FILE"
 
 # Optional: Relaxed validation. We check for a common keyword but don't exit if missing
 if ! grep -qi "Summary" "$REPORT_FILE"; then
@@ -99,6 +101,8 @@ if [ ! -s "$CLEAN_REPORT" ]; then
 fi
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
+echo "[Reporter] Apprise URL: ${APPRISE_API_URL}/notify"
+echo "[Reporter] Notification URLs: ${APPRISE_URLS}"
 
 # Send via Apprise API with file attachment
 # Apprise API expects multipart form data for file uploads
@@ -112,10 +116,6 @@ RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "url=${APPRISE_URLS}" \
   -F "attach=@${REPORT_FILE}")
 
-if echo "$RESPONSE" | grep -qi "success\|sent"; then
-  echo "[Reporter] Success: Report sent with attachment via Apprise API"
-else
-  echo "[Reporter] Warning: Apprise API response: $RESPONSE"
-fi
+echo "[Reporter] Apprise response: $RESPONSE"
 
 echo "[Reporter] Execution complete"
