@@ -67,13 +67,9 @@ which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 [ -f /usr/local/bin/kubernetes-mcp-server ] || echo "[Reporter] Warning: MCP server binary not found"
 
 # Run opencode with the prompt from the file
-# We use our custom provider 'lightbridge' defined in opencode.json
-# Using --thinking to surface tool use and reasoning in logs
-opencode run "$(cat /config/prompt.md)" \
-  --agent coder \
-  --model "lightbridge/${OPENCODE_MODEL}" \
-  --dangerously-skip-permissions \
-  --thinking \
+# Model and agent are configured via opencode.json (lightbridge provider + coder agent)
+# -p runs in non-interactive mode, -q suppresses the spinner
+opencode -p "$(cat /config/prompt.md)" -q \
   > "$REPORT_FILE"
 
 # Validate report
@@ -91,7 +87,8 @@ fi
 
 echo "[Reporter] Sending report via Apprise API..."
 
-# Filter out thinking blocks and truncate to 1800 chars to stay under Discord's 2000 char limit
+# Filter out any thinking/reasoning blocks and truncate to 1800 chars
+# to stay under Discord's 2000 char limit
 CLEAN_REPORT="/tmp/clean_report.txt"
 sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | grep -A 200 "# Executive Summary" | head -c 1800 > "$CLEAN_REPORT"
 
