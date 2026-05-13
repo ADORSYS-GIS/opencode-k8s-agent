@@ -32,7 +32,7 @@ opencode-k8s-agent:
             KEYCLOAK_CLIENT_ID: "opencode-k8s"
           envFrom:
             - secretRef:
-                name: opencode-k8s-agent-secrets
+                name: opencode-k8s-agent-secret
           resources:
             limits:
               cpu: 1000m
@@ -44,6 +44,7 @@ opencode-k8s-agent:
   serviceAccount:
     main:
       enabled: true
+      forceRename: main
 
   persistence:
     runtime:
@@ -61,13 +62,9 @@ opencode-k8s-agent:
         - path: /docs
           readOnly: true
 
-  secrets:
-    secrets:
-      enabled: true
-      stringData:
-        OPENCODE_API_KEY: ""
-        APPRISE_URLS: ""
-        KEYCLOAK_CLIENT_SECRET: ""
+  # secrets block intentionally omitted — the secret must be
+  # created externally (e.g. via ESO) with the name opencode-k8s-agent-secret
+  # containing: OPENCODE_API_KEY, APPRISE_URLS, KEYCLOAK_CLIENT_SECRET
 
 # RBAC Configuration (custom - not part of app-template v4)
 rbac:

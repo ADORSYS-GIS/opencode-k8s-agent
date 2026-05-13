@@ -1,5 +1,14 @@
 # Basic Configuration Example
-# This is the minimal configuration needed to get started
+# This is the minimal configuration needed to get started.
+#
+# Before installing, create the required secret:
+#
+#   kubectl create secret generic opencode-k8s-agent-secret \
+#     --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+#     --from-literal=APPRISE_URLS="discord://webhook-id/webhook-token"
+#
+# Note: OPENCODE_API_KEY is NOT required when using Keycloak OIDC (the default).
+# The agent fetches a token from Keycloak at runtime and uses it as the API key.
 
 opencode-k8s-agent:
   controllers:
@@ -7,23 +16,21 @@ opencode-k8s-agent:
       cronjob:
         # Run every 12 hours
         schedule: "0 */12 * * *"
-      
+
       containers:
         main:
           env:
             # Use OpenAI GPT-4
             OPENCODE_MODEL: "gpt-4"
             OPENCODE_BASE_URL: "https://api.openai.com/v1"
-            
+
             # Apprise API running in same namespace
             APPRISE_API_URL: "http://apprise-api:8000"
-  
-  secrets:
-    secrets:
-      stringData:
-        # Set these values before installing
-        OPENCODE_API_KEY: "sk-your-openai-api-key"
-        APPRISE_URLS: "discord://webhook-id/webhook-token"
+
+            # Keycloak OIDC settings
+            KEYCLOAK_URL: "https://auth.example.com"
+            KEYCLOAK_REALM: "your-realm"
+            KEYCLOAK_CLIENT_ID: "opencode-k8s"
 
 # Use default RBAC (read-only access)
 rbac:

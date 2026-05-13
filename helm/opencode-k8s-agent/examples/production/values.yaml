@@ -1,6 +1,14 @@
 # Production Configuration Example
 # This configuration includes custom prompts, multiple notification channels,
-# and production-ready settings
+# and production-ready settings.
+#
+# Before installing, create the required secret (or use ESO/Sealed Secrets):
+#
+#   kubectl create secret generic opencode-k8s-agent-secret \
+#     --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+#     --from-literal=APPRISE_URLS="discord://webhook-url slack://token email://smtp-config"
+#
+# Note: OPENCODE_API_KEY is NOT required when using Keycloak OIDC (the default).
 
 opencode-k8s-agent:
   controllers:
@@ -35,13 +43,6 @@ opencode-k8s-agent:
             requests:
               cpu: 200m
               memory: 512Mi
-  
-  secrets:
-    secrets:
-      stringData:
-        OPENCODE_API_KEY: ""  # Set via external secret or sealed secret
-        # Multiple notification channels
-        APPRISE_URLS: "discord://webhook-url slack://token email://smtp-config"
 
 rbac:
   create: true

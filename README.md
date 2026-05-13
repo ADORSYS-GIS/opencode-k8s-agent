@@ -52,8 +52,8 @@ cd opencode-k8s-agent
 helm install apprise-api ./helm/apprise-api
 
 # 3. Create secrets
-kubectl create secret generic opencode-k8s-agent-secrets \
-  --from-literal=OPENCODE_API_KEY="sk-your-api-key" \
+kubectl create secret generic opencode-k8s-agent-secret \
+  --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
   --from-literal=APPRISE_URLS="discord://webhook-id/webhook-token"
 
 # 4. Install the agent
@@ -314,13 +314,17 @@ opencode-k8s-agent:
           env:
             OPENCODE_MODEL: "gpt-4"
             OPENCODE_BASE_URL: "https://api.openai.com/v1"
-  
-  secrets:
-    secrets:
-      stringData:
-        OPENCODE_API_KEY: "sk-..."
-        APPRISE_URLS: "discord://webhook-url"
 ```
+
+Create the required secret externally (or via ESO):
+
+```bash
+kubectl create secret generic opencode-k8s-agent-secret \
+  --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+  --from-literal=APPRISE_URLS="discord://webhook-url"
+```
+
+> `OPENCODE_API_KEY` is not required when using Keycloak OIDC (the default). The agent exchanges the client credentials for a token at runtime and uses it as the API key.
 
 ### Custom Prompts
 

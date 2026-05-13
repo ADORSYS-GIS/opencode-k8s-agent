@@ -5,7 +5,7 @@ This is the minimal configuration to get OpenCode K8s Agent running.
 ## Prerequisites
 
 1. Kubernetes cluster
-2. OpenAI API key
+2. Keycloak client credentials (or a direct API key if not using OIDC)
 3. Discord webhook URL (or other notification channel)
 
 ## Installation Steps
@@ -16,11 +16,17 @@ This is the minimal configuration to get OpenCode K8s Agent running.
 helm install apprise-api ../../apprise-api
 ```
 
-### 2. Update values.yaml
+### 2. Create the secret
 
-Edit `values.yaml` and set:
-- `OPENCODE_API_KEY`: Your OpenAI API key
-- `APPRISE_URLS`: Your Discord webhook URL
+```bash
+kubectl create secret generic opencode-k8s-agent-secret \
+  --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+  --from-literal=APPRISE_URLS="discord://webhook-id/webhook-token"
+```
+
+> **Note**: `OPENCODE_API_KEY` is not required when using Keycloak OIDC (the default).
+> The agent fetches a token from Keycloak at runtime and uses it as the API key.
+> Only add `OPENCODE_API_KEY` to the secret if you are bypassing Keycloak entirely.
 
 ### 3. Install the agent
 
@@ -49,6 +55,7 @@ You should receive a cluster health report within a few minutes!
 
 - Runs every 12 hours
 - Uses OpenAI GPT-4 for analysis
+- Authenticates via Keycloak OIDC (client credentials flow)
 - Sends reports to Discord
 - Uses default investigation prompts
 - Has read-only access to cluster resources
