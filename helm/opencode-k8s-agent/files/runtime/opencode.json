@@ -4,12 +4,12 @@
       "npm": "@ai-sdk/openai-compatible",
       "name": "LightBridge",
       "options": {
-        "baseURL": "${OPENCODE_BASE_URL}",
-        "apiKey": "${OPENCODE_API_KEY}"
+        "baseURL": "{env:OPENCODE_BASE_URL}",
+        "apiKey": "{env:OPENCODE_API_KEY}"
       },
       "models": {
-        "${OPENCODE_MODEL}": {
-          "name": "${OPENCODE_MODEL}"
+        "{env:OPENCODE_MODEL}": {
+          "name": "{env:OPENCODE_MODEL}"
         }
       }
     }

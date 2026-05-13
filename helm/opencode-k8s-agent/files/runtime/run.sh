@@ -11,7 +11,7 @@ REPORT_FILE="/tmp/report.txt"
 fetch_keycloak_token() {
   local token_url="${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token"
 
-  echo "[OIDC] Fetching token from Keycloak..."
+  echo "[OIDC] Fetching token from Keycloak..." >&2
 
   local response
   response=$(curl -s -X POST "$token_url" \
@@ -21,7 +21,7 @@ fetch_keycloak_token() {
     -d "client_secret=${KEYCLOAK_CLIENT_SECRET}")
 
   if [ -z "$response" ]; then
-    echo "[OIDC] Error: Empty response from Keycloak"
+    echo "[OIDC] Error: Empty response from Keycloak" >&2
     return 1
   fi
 
@@ -29,8 +29,8 @@ fetch_keycloak_token() {
   access_token=$(echo "$response" | jq -r '.access_token // empty')
 
   if [ -z "$access_token" ]; then
-    echo "[OIDC] Error: Failed to get access_token"
-    echo "[OIDC] Response: $response"
+    echo "[OIDC] Error: Failed to get access_token" >&2
+    echo "[OIDC] Response: $response" >&2
     return 1
   fi
 
@@ -57,9 +57,8 @@ export OPENCODE_API_KEY="$KEYCLOAK_TOKEN"
 # OpenCode Configuration
 # ============================================================
 
-# Generate final config from template in the current working directory
-# OpenCode looks for opencode.json (no dot) in the current directory for project-specific settings
-envsubst < /config/opencode.json > opencode.json
+# Copy config — all values are read via {env:VAR} at runtime, no substitution needed
+cp /config/opencode.json opencode.json
 
 # Diagnostic: Check for tools
 echo "[Reporter] Verifying environment..."
