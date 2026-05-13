@@ -65,26 +65,13 @@ echo "[Reporter] Verifying environment..."
 which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 [ -f /usr/local/bin/kubernetes-mcp-server ] || echo "[Reporter] Warning: MCP server binary not found"
 
-# Run opencode and capture the report
-# Default format writes the assistant's final response to stdout
-# Stderr gets the TUI/progress chrome — redirect it to a log for debugging
+# Run opencode — response goes to stderr, stdout is empty in non-interactive mode
+# permission: "allow" in opencode.json covers external_directory and all MCP tool calls
 opencode run \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   "$(cat /config/prompt.md)" \
-  > "$REPORT_FILE" 2>/tmp/opencode_stderr.log || true
-
-# If stdout was empty, the response may have gone to stderr (some versions do this)
-if [ ! -s "$REPORT_FILE" ] && [ -s /tmp/opencode_stderr.log ]; then
-  echo "[Reporter] stdout empty, checking stderr output..."
-  cp /tmp/opencode_stderr.log "$REPORT_FILE"
-fi
-
-# Log stderr for visibility regardless
-if [ -s /tmp/opencode_stderr.log ]; then
-  echo "[Reporter] opencode stderr output:"
-  cat /tmp/opencode_stderr.log
-fi
+  2>"$REPORT_FILE" >/dev/null || true
 
 # Validate report
 if [ ! -s "$REPORT_FILE" ]; then
