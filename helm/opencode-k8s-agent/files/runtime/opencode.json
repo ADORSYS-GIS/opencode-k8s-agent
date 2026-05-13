@@ -1,23 +1,17 @@
 {
-  "logLevel": "DEBUG",
   "provider": {
     "lightbridge": {
       "npm": "@ai-sdk/openai-compatible",
+      "name": "LightBridge",
       "options": {
         "baseURL": "${OPENCODE_BASE_URL}",
         "apiKey": "${OPENCODE_API_KEY}"
       },
       "models": {
         "${OPENCODE_MODEL}": {
-          "id": "${OPENCODE_MODEL}",
-          "tool_call": true
+          "name": "${OPENCODE_MODEL}"
         }
       }
-    }
-  },
-  "agent": {
-    "coder": {
-      "model": "lightbridge:${OPENCODE_MODEL}"
     }
   },
   "mcp": {

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM node:22-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -8,18 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -L -o /tmp/opencode.tar.gz https://github.com/opencode-ai/opencode/releases/download/v0.0.55/opencode-linux-x86_64.tar.gz && \
-    tar -xzf /tmp/opencode.tar.gz -C /tmp && \
-    mv /tmp/opencode /usr/local/bin/ && \
-    rm -rf /tmp/opencode.tar.gz
+# Install opencode (sst/opencode — the real one, distributed via npm)
+RUN npm install -g opencode-ai@1.14.48
 
-RUN curl -L -o /usr/local/bin/kubernetes-mcp-server \
-    https://github.com/containers/kubernetes-mcp-server/releases/v0.0.62/download/kubernetes-mcp-server-linux-amd64 && \
+# Install kubernetes-mcp-server
+RUN curl -fsSL -o /usr/local/bin/kubernetes-mcp-server \
+    https://github.com/containers/kubernetes-mcp-server/releases/download/v0.0.62/kubernetes-mcp-server-linux-amd64 && \
     chmod +x /usr/local/bin/kubernetes-mcp-server
 
-RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
-    install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
-    rm kubectl
+# Install kubectl
+RUN curl -fsSL -o /usr/local/bin/kubectl \
+    "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x /usr/local/bin/kubectl
 
 RUN mkdir -p /config /work /tmp
 

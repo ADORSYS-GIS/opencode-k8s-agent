@@ -67,9 +67,12 @@ which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 [ -f /usr/local/bin/kubernetes-mcp-server ] || echo "[Reporter] Warning: MCP server binary not found"
 
 # Run opencode with the prompt from the file
-# Model and agent are configured via opencode.json (lightbridge provider + coder agent)
-# -p runs in non-interactive mode, -q suppresses the spinner
-opencode -p "$(cat /config/prompt.md)" -q \
+# Model is passed via --model flag in provider/model format
+# --dangerously-skip-permissions auto-approves all tool calls (read-only RBAC ensures safety)
+opencode run \
+  --model "lightbridge/${OPENCODE_MODEL}" \
+  --dangerously-skip-permissions \
+  "$(cat /config/prompt.md)" \
   > "$REPORT_FILE"
 
 # Validate report
