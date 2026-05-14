@@ -26,7 +26,7 @@ fetch_keycloak_token() {
   fi
 
   local access_token
-  access_token=$(echo "$response" | jq -r '.access_token // empty')
+  access_token=$(echo "$response" | jq -r '.access_token // empty' | tr -d '\n\r' | xargs)
 
   if [ -z "$access_token" ]; then
     echo "[OIDC] Error: Failed to get access_token" >&2
@@ -34,6 +34,7 @@ fetch_keycloak_token() {
     return 1
   fi
 
+  echo "[OIDC] Token length: ${#access_token} characters" >&2
   echo "$access_token"
 }
 
@@ -53,6 +54,14 @@ fi
 # Use Keycloak token as the API key for OpenCode/LightBridge
 export OPENCODE_API_KEY="$KEYCLOAK_TOKEN"
 
+# Debug: Show token format (first/last 10 chars only for security)
+if [ -n "$OPENCODE_API_KEY" ]; then
+  TOKEN_LEN=${#OPENCODE_API_KEY}
+  echo "[OIDC] Using token: ${OPENCODE_API_KEY:0:10}...${OPENCODE_API_KEY: -10} (length: $TOKEN_LEN)"
+else
+  echo "[OIDC] Warning: OPENCODE_API_KEY is empty!"
+fi
+
 # ============================================================
 # OpenCode Configuration
 # ============================================================
@@ -62,10 +71,31 @@ export OPENCODE_API_KEY="$KEYCLOAK_TOKEN"
 # OpenCode looks for opencode.json in the current working directory.
 envsubst < /config/opencode.json > opencode.json
 
+# Debug: Show the generated config (with API key masked)
+echo "[Config] Generated opencode.json:"
+sed 's/"apiKey": ".*"/"apiKey": "[REDACTED]"/' opencode.json
+
+# Debug: Test API connectivity with the token
+echo "[Config] Testing API connectivity to ${OPENCODE_BASE_URL}..."
+HTTP_CODE=$(curl -s -o /tmp/api_test.json -w "%{http_code}" \
+  -H "Authorization: Bearer ${OPENCODE_API_KEY}" \
+  "${OPENCODE_BASE_URL}/models")
+echo "[Config] API test HTTP status: $HTTP_CODE"
+if [ "$HTTP_CODE" != "200" ]; then
+  echo "[Config] API test response:"
+  cat /tmp/api_test.json || echo "(empty response)"
+fi
+
 # Diagnostic: Check for tools
 echo "[Reporter] Verifying environment..."
 which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 [ -f /usr/local/bin/kubernetes-mcp-server ] || echo "[Reporter] Warning: MCP server binary not found"
+
+# Test MCP server
+echo "[Reporter] Testing kubernetes-mcp-server..."
+timeout 2s /usr/local/bin/kubernetes-mcp-server 2>&1 | head -5 || echo "[Reporter] MCP server test completed"
+
+echo "[Reporter] Starting opencode run..."
 
 # Run opencode with the prompt from the file
 opencode run "$(cat /config/prompt.md)" \
@@ -73,7 +103,7 @@ opencode run "$(cat /config/prompt.md)" \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   --thinking \
-  > "$REPORT_FILE" 2>&1
+  > "$REPORT_FILE"
 
 # Validate report — print contents regardless for debugging
 echo "[Reporter] Report size: $(stat -c%s "$REPORT_FILE" 2>/dev/null || echo 0) bytes"

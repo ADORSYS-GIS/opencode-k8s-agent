@@ -1,6 +1,5 @@
 {
   "logLevel": "DEBUG",
-  "permission": "allow",
   "provider": {
     "lightbridge": {
       "npm": "@ai-sdk/openai-compatible",
