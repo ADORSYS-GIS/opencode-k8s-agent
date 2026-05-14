@@ -165,13 +165,12 @@ fi
 
 echo "[Reporter] Sending report via Apprise API..."
 
-# Filter out thinking blocks and truncate to 1800 chars to stay under Discord's 2000 char limit
+# Filter out thinking blocks and truncate to 1950 chars. 
+# Fall back to raw report if sed fails for any reason.
 CLEAN_REPORT="/tmp/clean_report.txt"
-sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | grep -A 200 "# Executive Summary" | head -c 1800 > "$CLEAN_REPORT" || true
-
-# If the grep failed (no Executive Summary), just take the first 1800 chars
-if [ ! -s "$CLEAN_REPORT" ]; then
-  head -c 1800 "$REPORT_FILE" > "$CLEAN_REPORT"
+if ! sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | head -c 1950 > "$CLEAN_REPORT"; then
+  echo "[Reporter] Warning: Failed to clean thinking blocks, falling back to raw truncation..."
+  head -c 1950 "$REPORT_FILE" > "$CLEAN_REPORT"
 fi
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
@@ -192,10 +191,10 @@ RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
 
 echo "[Reporter] Apprise API response: $RESPONSE"
 
-if echo "$RESPONSE" | grep -qi "success\|sent"; then
+if echo "${RESPONSE:-}" | grep -qi "success\|sent" >/dev/null 2>&1; then
   echo "[Reporter] Success: Report sent with attachment via Apprise API"
 else
-  echo "[Reporter] Warning: Apprise API did not return success. Response: $RESPONSE"
+  echo "[Reporter] Warning: Apprise API did not return success. Response: ${RESPONSE:-<empty>}"
 fi
 
 echo "[Reporter] Execution complete"
