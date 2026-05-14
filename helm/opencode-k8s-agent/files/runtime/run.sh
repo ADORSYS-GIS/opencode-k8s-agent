@@ -150,21 +150,6 @@ opencode run "$(cat /config/prompt.md)" \
 echo "[Reporter] Report size: $(stat -c%s "$REPORT_FILE" 2>/dev/null || echo 0) bytes"
 cat "$REPORT_FILE" || true
 
-# Surface the internal technical logs for maximum visibility
-echo "[Reporter] Internal OpenCode technical logs:"
-LOG_DIR="${HOME:-/root}/.local/share/opencode/log"
-if [ -d "$LOG_DIR" ]; then
-  LATEST_LOG=$(find "$LOG_DIR" -type f -name "*.log" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -f2- -d" ")
-  if [ -n "$LATEST_LOG" ]; then
-    echo "[Reporter] Reading log file: $LATEST_LOG"
-    cat "$LATEST_LOG"
-  else
-    echo "[Reporter] No log files found in $LOG_DIR"
-  fi
-else
-  echo "[Reporter] Log directory $LOG_DIR not found"
-fi
-
 if [ ! -s "$REPORT_FILE" ]; then
   echo "[Reporter] Error: Empty report generated"
   echo "[Reporter] opencode stderr output:"
