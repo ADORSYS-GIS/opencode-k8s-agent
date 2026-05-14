@@ -1,10 +1,5 @@
 {
   "logLevel": "DEBUG",
-  "debug": true,
-  "display": {
-    "showTools": true,
-    "showThinking": true
-  },
   "provider": {
     "lightbridge": {
       "npm": "@ai-sdk/openai-compatible",
