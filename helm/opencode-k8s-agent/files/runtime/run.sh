@@ -92,7 +92,7 @@ if [ "$HTTP_CODE" != "200" ]; then
   echo "[Config] API test response:"
   cat /tmp/api_test.json || echo "(empty response)"
   echo "[Config] Curl debug log:"
-  grep -E "^<|> " /tmp/curl_debug.log | sed 's/^/  /'
+  grep -E "^<|> " /tmp/curl_debug.log | sed 's/Authorization: Bearer .*/Authorization: Bearer [REDACTED]/' | sed 's/^/  /'
   
   # Fallback logic for 403 Forbidden
   if [ "$HTTP_CODE" == "403" ]; then
@@ -127,19 +127,20 @@ which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 echo "[Reporter] Testing kubernetes-mcp-server..."
 # kubernetes-mcp-server is a JSON-RPC server; running it without input and killing it is expected to show EOF.
 # We'll just verify it can start and print its initial state if any.
-timeout 2s /usr/local/bin/kubernetes-mcp-server --help >/dev/null 2>&1 || echo "[Reporter] MCP server binary is present and executable"
+timeout 2s /usr/local/bin/kubernetes-mcp-server --help >/dev/null 2>&1 && echo "[Reporter] MCP server binary is present and executable"
 
 echo "[Reporter] Starting opencode run..."
 
 # Run opencode with the prompt from the file
-# Capture stderr to a separate file to diagnose empty reports
+# We use tee to stream stderr to the pod logs (for real-time visibility of tool calls)
+# while still capturing it to a file for diagnostics if needed.
 echo "[Reporter] Executing opencode run..."
 opencode run "$(cat /config/prompt.md)" \
   --agent coder \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   --thinking \
-  > "$REPORT_FILE" 2>/tmp/opencode_stderr.log || {
+  > "$REPORT_FILE" 2> >(tee /tmp/opencode_stderr.log >&2) || {
     echo "[Reporter] Error: opencode run failed (exit code $?)"
     cat /tmp/opencode_stderr.log
     exit 1
