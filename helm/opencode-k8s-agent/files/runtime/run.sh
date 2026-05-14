@@ -3,6 +3,9 @@ set -euo pipefail
 
 echo "[Reporter] Starting..."
 
+# Save original API key for fallback if Keycloak token fails connectivity test
+ORIGINAL_OPENCODE_API_KEY="${OPENCODE_API_KEY:-}"
+
 REPORT_FILE="/tmp/report.txt"
 
 # ============================================================
@@ -90,6 +93,29 @@ if [ "$HTTP_CODE" != "200" ]; then
   cat /tmp/api_test.json || echo "(empty response)"
   echo "[Config] Curl debug log:"
   grep -E "^<|> " /tmp/curl_debug.log | sed 's/^/  /'
+  
+  # Fallback logic for 403 Forbidden
+  if [ "$HTTP_CODE" == "403" ]; then
+    if [ -n "$ORIGINAL_OPENCODE_API_KEY" ] && [ "$OPENCODE_API_KEY" != "$ORIGINAL_OPENCODE_API_KEY" ]; then
+      echo "[Config] Got 403 with current token. Falling back to original OPENCODE_API_KEY..."
+      export OPENCODE_API_KEY="$ORIGINAL_OPENCODE_API_KEY"
+      
+      # Regenerate config with the fallback key
+      envsubst < /config/opencode.json > opencode.json
+      echo "[Config] Regenerated opencode.json with fallback API key"
+      
+      # Verify the fallback key
+      echo "[Config] Verifying fallback API key..."
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${OPENCODE_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -H "User-Agent: Mozilla/5.0 (OpenCodeAgent/1.0)" \
+        "${OPENCODE_BASE_URL}/models")
+      echo "[Config] Fallback API test HTTP status: $HTTP_CODE"
+    else
+      echo "[Config] Got 403 but no valid fallback OPENCODE_API_KEY available."
+    fi
+  fi
 fi
 
 # Diagnostic: Check for tools
