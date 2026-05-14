@@ -179,7 +179,8 @@ TITLE="K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
 RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "body=<${CLEAN_REPORT}" \
   -F "title=${TITLE}" \
-  -F "url=${APPRISE_URLS}" \
+  -F "urls=${APPRISE_URLS}" \
+  -F "format=markdown" \
   -F "attach=@${REPORT_FILE}")
 
 if echo "$RESPONSE" | grep -qi "success\|sent"; then
