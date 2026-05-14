@@ -73,7 +73,10 @@ rbac:
     name: opencode-k8s-agent-readonly
     rules:
       - apiGroups: [""]
-        resources: [nodes, pods, pods/log, events, services, endpoints, configmaps, persistentvolumeclaims]
+        resources: [namespaces, nodes, pods, pods/log, events, services, endpoints, configmaps, persistentvolumeclaims]
+        verbs: [get, list, watch]
+      - apiGroups: ["metrics.k8s.io"]
+        resources: [nodes, pods]
         verbs: [get, list, watch]
       - apiGroups: ["apps"]
         resources: [deployments, statefulsets, daemonsets]
