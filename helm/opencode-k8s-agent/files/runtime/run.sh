@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
 
 echo "[Reporter] Starting..."
 
@@ -183,12 +185,15 @@ else
 fi
 
 # Clean up any leftover thinking lines that might have slipped through the grep
-sed -i '/^Thinking:/d' "$CLEAN_REPORT"
+# We use a more precise pattern to avoid touching actual content
+sed -i '/^Thinking:[[:space:]]*/d' "$CLEAN_REPORT"
 
 # Truncate to Discord limit (1950 chars) to ensure 200 OK
 head -c 1950 "$CLEAN_REPORT" > "${CLEAN_REPORT}.tmp" && mv "${CLEAN_REPORT}.tmp" "$CLEAN_REPORT"
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
+echo "[Reporter] First 5 lines of payload for emoji verification:"
+head -n 5 "$CLEAN_REPORT"
 
 TITLE="🚀 K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
 
