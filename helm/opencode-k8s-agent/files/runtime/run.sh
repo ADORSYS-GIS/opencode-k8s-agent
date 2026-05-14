@@ -165,19 +165,32 @@ fi
 
 echo "[Reporter] Sending report via Apprise API..."
 
-# Skip all internal thinking/reasoning and start at the first Markdown header (#)
+# ============================================================
+# Report Payload Preparation (The "Best of Both Worlds")
+# ============================================================
 CLEAN_REPORT="/tmp/clean_report.txt"
-sed -n '/^# /,$p' "$REPORT_FILE" | head -c 1950 > "$CLEAN_REPORT" || true
 
-# Fallback: If no headers were found (empty clean report), send the first 1950 chars raw
-if [ ! -s "$CLEAN_REPORT" ]; then
-  echo "[Reporter] Warning: No markdown headers found, sending first 1950 chars raw..."
-  head -c 1950 "$REPORT_FILE" > "$CLEAN_REPORT"
+# 1. Primary: Try to start at the Executive Summary (The classic "Image 1" look)
+if grep -A 200 "# Executive Summary" "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
+  echo "[Reporter] Success: Found Executive Summary"
+# 2. Secondary: Fall back to the first Markdown header
+elif sed -n '/^# /,$p' "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
+  echo "[Reporter] Warning: Executive Summary missing, starting at first header"
+# 3. Tertiary: Raw truncation if all else fails
+else
+  echo "[Reporter] Warning: No headers found, sending raw truncation"
+  head -c 2000 "$REPORT_FILE" > "$CLEAN_REPORT"
 fi
+
+# Clean up any leftover thinking lines that might have slipped through the grep
+sed -i '/^Thinking:/d' "$CLEAN_REPORT"
+
+# Truncate to Discord limit (1950 chars) to ensure 200 OK
+head -c 1950 "$CLEAN_REPORT" > "${CLEAN_REPORT}.tmp" && mv "${CLEAN_REPORT}.tmp" "$CLEAN_REPORT"
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
 
-TITLE="K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
+TITLE="🚀 K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
 
 if [ -z "${APPRISE_URLS:-}" ]; then
   echo "[Reporter] Error: APPRISE_URLS is empty. Check your Kubernetes secrets."
