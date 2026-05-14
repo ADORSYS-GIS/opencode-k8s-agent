@@ -73,7 +73,7 @@ opencode run "$(cat /config/prompt.md)" \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   --thinking \
-  > "$REPORT_FILE"
+  > "$REPORT_FILE" 2>&1
 
 # Validate report
 if [ ! -s "$REPORT_FILE" ]; then
