@@ -165,11 +165,13 @@ fi
 
 echo "[Reporter] Sending report via Apprise API..."
 
-# Filter out thinking blocks and truncate to 1950 chars. 
-# Fall back to raw report if sed fails for any reason.
+# Skip all internal thinking/reasoning and start at the first Markdown header (#)
 CLEAN_REPORT="/tmp/clean_report.txt"
-if ! sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | head -c 1950 > "$CLEAN_REPORT"; then
-  echo "[Reporter] Warning: Failed to clean thinking blocks, falling back to raw truncation..."
+sed -n '/^# /,$p' "$REPORT_FILE" | head -c 1950 > "$CLEAN_REPORT" || true
+
+# Fallback: If no headers were found (empty clean report), send the first 1950 chars raw
+if [ ! -s "$CLEAN_REPORT" ]; then
+  echo "[Reporter] Warning: No markdown headers found, sending first 1950 chars raw..."
   head -c 1950 "$REPORT_FILE" > "$CLEAN_REPORT"
 fi
 
