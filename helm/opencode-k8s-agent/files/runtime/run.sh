@@ -73,15 +73,17 @@ opencode run "$(cat /config/prompt.md)" \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   --thinking \
+  --log-level DEBUG \
   > "$REPORT_FILE" 2>&1
 
-# Validate report
+# Validate report — print contents regardless for debugging
+echo "[Reporter] Report size: $(stat -c%s "$REPORT_FILE" 2>/dev/null || echo 0) bytes"
+cat "$REPORT_FILE" || true
+
 if [ ! -s "$REPORT_FILE" ]; then
   echo "[Reporter] Error: Empty report generated"
   exit 1
 fi
-
-echo "[Reporter] Report generated (Size: $(stat -c%s "$REPORT_FILE") bytes)"
 
 # Optional: Relaxed validation. We check for a common keyword but don't exit if missing
 if ! grep -qi "Summary" "$REPORT_FILE"; then
