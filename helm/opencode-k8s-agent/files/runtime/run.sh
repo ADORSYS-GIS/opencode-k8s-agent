@@ -166,7 +166,7 @@ echo "[Reporter] Sending report via Apprise API..."
 
 # Filter out thinking blocks and truncate to 1800 chars to stay under Discord's 2000 char limit
 CLEAN_REPORT="/tmp/clean_report.txt"
-sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | grep -A 200 "# Executive Summary" | head -c 1800 > "$CLEAN_REPORT"
+sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" | grep -A 200 "# Executive Summary" | head -c 1800 > "$CLEAN_REPORT" || true
 
 # If the grep failed (no Executive Summary), just take the first 1800 chars
 if [ ! -s "$CLEAN_REPORT" ]; then
@@ -177,6 +177,11 @@ echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
 
 TITLE="K8s Cluster Report: $(date +'%Y-%m-%d %H:%M')"
 
+if [ -z "${APPRISE_URLS:-}" ]; then
+  echo "[Reporter] Error: APPRISE_URLS is empty. Check your Kubernetes secrets."
+  exit 1
+fi
+
 RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "body=<${CLEAN_REPORT}" \
   -F "title=${TITLE}" \
@@ -184,10 +189,12 @@ RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "format=markdown" \
   -F "attach=@${REPORT_FILE}")
 
-if echo "$RESPONSE" | grep -qi "success\|sent"; then
+echo "[Reporter] Apprise API response: $RESPONSE"
+
+if echo "$RESPONSE" | grep -qi "success"; then
   echo "[Reporter] Success: Report sent with attachment via Apprise API"
 else
-  echo "[Reporter] Warning: Apprise API response: $RESPONSE"
+  echo "[Reporter] Warning: Apprise API did not return success. Response: $RESPONSE"
 fi
 
 echo "[Reporter] Execution complete"
