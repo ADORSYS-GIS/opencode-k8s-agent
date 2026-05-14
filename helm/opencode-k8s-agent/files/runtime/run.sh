@@ -73,7 +73,6 @@ opencode run "$(cat /config/prompt.md)" \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
   --thinking \
-  --log-level DEBUG \
   > "$REPORT_FILE" 2>&1
 
 # Validate report — print contents regardless for debugging
