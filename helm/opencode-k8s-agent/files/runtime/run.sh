@@ -130,6 +130,7 @@ echo "[Reporter] Testing kubernetes-mcp-server..."
 timeout 2s /usr/local/bin/kubernetes-mcp-server --help >/dev/null 2>&1 && echo "[Reporter] MCP server binary is present and executable"
 
 echo "[Reporter] Starting opencode run..."
+opencode mcp list
 
 # Run opencode with the prompt from the file
 # We use tee to stream stderr to the pod logs (for real-time visibility of tool calls)
@@ -191,7 +192,7 @@ RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
 
 echo "[Reporter] Apprise API response: $RESPONSE"
 
-if echo "$RESPONSE" | grep -qi "success"; then
+if echo "$RESPONSE" | grep -qi "success\|sent"; then
   echo "[Reporter] Success: Report sent with attachment via Apprise API"
 else
   echo "[Reporter] Warning: Apprise API did not return success. Response: $RESPONSE"
