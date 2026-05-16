@@ -172,19 +172,19 @@ echo "[Reporter] Sending report via Apprise API..."
 # ============================================================
 CLEAN_REPORT="/tmp/clean_report.txt"
 
-# Strip <thinking>...</thinking> blocks first (opencode --thinking writes these to stdout),
-# then extract everything from the Executive Summary header to end of file.
-# awk is used instead of grep -A N because grep silently caps at N lines.
-if sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" \
-   | awk '/^# .*Executive Summary/{found=1} found{print}' > "$CLEAN_REPORT" \
+# Extract everything after the unique ---REPORT START--- delimiter.
+# This is anchored to a delimiter rather than a header so that "Thinking: ..."
+# lines and any pre-report reasoning emitted by opencode --thinking are skipped
+# regardless of their format (plain-text or XML <thinking> blocks).
+if awk '/^---REPORT START---/{found=1; next} found{print}' "$REPORT_FILE" > "$CLEAN_REPORT" \
    && [ -s "$CLEAN_REPORT" ]; then
-  echo "[Reporter] Report extracted from Executive Summary header"
+  echo "[Reporter] Report extracted via REPORT START delimiter"
 else
-  echo "[Reporter] Warning: Executive Summary header not found — prompt adherence issue. Sending raw output."
-  sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" > "$CLEAN_REPORT"
+  echo "[Reporter] Warning: REPORT START delimiter not found — prompt adherence issue. Sending raw output."
+  cp "$REPORT_FILE" "$CLEAN_REPORT"
 fi
 
-# Remove any stray thinking/reasoning lines that leaked through
+# Remove any stray Thinking: lines that leaked past the delimiter
 sed -i '/^Thinking:[[:space:]]*/d' "$CLEAN_REPORT"
 
 # Smart truncation: cut at the last complete line within the Discord limit,

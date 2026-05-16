@@ -17,11 +17,11 @@ You MUST NOT modify any cluster resources.
 
 ## 📄 Reporting Format
 
-Your **final response MUST be ONLY the structured report** — nothing else. No preamble, no narration, no tool descriptions. Begin your output with the exact line `# 🚀 📋 🌐 Executive Summary`.
+Once your investigation is complete, output the exact line below on its own line, then immediately write the report:
 
-Every section below is mandatory. Write `None.` if a section has nothing to report.
+---REPORT START---
 
----
+Every section is mandatory. Write `None.` if a section has nothing to report.
 
 # 🚀 📋 🌐 Executive Summary
 [2–3 sentences. Open with **✅ Cluster Healthy**, **⚠️ Cluster Degraded**, or **🔴 Cluster Critical**. Name any active issues explicitly. Close with Lightbridge and LibreChat operational status.]
