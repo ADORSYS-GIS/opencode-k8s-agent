@@ -172,17 +172,19 @@ echo "[Reporter] Sending report via Apprise API..."
 # ============================================================
 CLEAN_REPORT="/tmp/clean_report.txt"
 
-# Extract everything from "# Executive Summary" to end of file.
-# awk is used instead of grep -A N because grep silently caps output at N lines,
-# which caused mid-report truncation and the secondary fallback to fire incorrectly.
-if awk '/^# .*Executive Summary/{found=1} found{print}' "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
+# Strip <thinking>...</thinking> blocks first (opencode --thinking writes these to stdout),
+# then extract everything from the Executive Summary header to end of file.
+# awk is used instead of grep -A N because grep silently caps at N lines.
+if sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" \
+   | awk '/^# .*Executive Summary/{found=1} found{print}' > "$CLEAN_REPORT" \
+   && [ -s "$CLEAN_REPORT" ]; then
   echo "[Reporter] Report extracted from Executive Summary header"
 else
   echo "[Reporter] Warning: Executive Summary header not found — prompt adherence issue. Sending raw output."
-  cp "$REPORT_FILE" "$CLEAN_REPORT"
+  sed '/<thinking>/,/<\/thinking>/d' "$REPORT_FILE" > "$CLEAN_REPORT"
 fi
 
-# Remove any thinking/reasoning lines that leaked into stdout
+# Remove any stray thinking/reasoning lines that leaked through
 sed -i '/^Thinking:[[:space:]]*/d' "$CLEAN_REPORT"
 
 # Smart truncation: cut at the last complete line within the Discord limit,
