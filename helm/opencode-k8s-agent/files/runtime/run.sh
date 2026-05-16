@@ -135,14 +135,15 @@ echo "[Reporter] Starting opencode run..."
 opencode mcp list
 
 # Run opencode with the prompt from the file
-# We use tee to stream stderr to the pod logs (for real-time visibility of tool calls)
-# while still capturing it to a file for diagnostics if needed.
+# --thinking is intentionally omitted: with it enabled, opencode streams the model's
+# entire reasoning process to stdout, polluting the report file and making the
+# ---REPORT START--- delimiter unreliable. Tool calls still work without it.
+# stderr is captured separately so tool call activity remains visible in pod logs.
 echo "[Reporter] Executing opencode run..."
 opencode run "$(cat /config/prompt.md)" \
   --agent coder \
   --model "lightbridge/${OPENCODE_MODEL}" \
   --dangerously-skip-permissions \
-  --thinking \
   > "$REPORT_FILE" 2> >(tee /tmp/opencode_stderr.log >&2) || {
     echo "[Reporter] Error: opencode run failed (exit code $?)"
     cat /tmp/opencode_stderr.log
