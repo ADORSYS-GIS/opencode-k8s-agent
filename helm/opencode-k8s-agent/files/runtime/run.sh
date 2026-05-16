@@ -168,28 +168,34 @@ fi
 echo "[Reporter] Sending report via Apprise API..."
 
 # ============================================================
-# Report Payload Preparation (The "Best of Both Worlds")
+# Report Payload Preparation
 # ============================================================
 CLEAN_REPORT="/tmp/clean_report.txt"
 
-# 1. Primary: Try to start at the Executive Summary (The classic "Image 1" look)
-if grep -A 200 "# Executive Summary" "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
-  echo "[Reporter] Success: Found Executive Summary"
-# 2. Secondary: Fall back to the first Markdown header
-elif sed -n '/^# /,$p' "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
-  echo "[Reporter] Warning: Executive Summary missing, starting at first header"
-# 3. Tertiary: Raw truncation if all else fails
+# Extract everything from "# Executive Summary" to end of file.
+# awk is used instead of grep -A N because grep silently caps output at N lines,
+# which caused mid-report truncation and the secondary fallback to fire incorrectly.
+if awk '/^# .*Executive Summary/{found=1} found{print}' "$REPORT_FILE" > "$CLEAN_REPORT" && [ -s "$CLEAN_REPORT" ]; then
+  echo "[Reporter] Report extracted from Executive Summary header"
 else
-  echo "[Reporter] Warning: No headers found, sending raw truncation"
-  head -c 2000 "$REPORT_FILE" > "$CLEAN_REPORT"
+  echo "[Reporter] Warning: Executive Summary header not found — prompt adherence issue. Sending raw output."
+  cp "$REPORT_FILE" "$CLEAN_REPORT"
 fi
 
-# Clean up any leftover thinking lines that might have slipped through the grep
-# We use a more precise pattern to avoid touching actual content
+# Remove any thinking/reasoning lines that leaked into stdout
 sed -i '/^Thinking:[[:space:]]*/d' "$CLEAN_REPORT"
 
-# Truncate to Discord limit (1950 chars) to ensure 200 OK
-head -c 1950 "$CLEAN_REPORT" > "${CLEAN_REPORT}.tmp" && mv "${CLEAN_REPORT}.tmp" "$CLEAN_REPORT"
+# Smart truncation: cut at the last complete line within the Discord limit,
+# then append an indicator so engineers know to check the attachment.
+DISCORD_LIMIT=1850
+REPORT_SIZE=$(wc -c < "$CLEAN_REPORT")
+
+if [ "$REPORT_SIZE" -gt "$DISCORD_LIMIT" ]; then
+  echo "[Reporter] Report size ${REPORT_SIZE}B exceeds Discord limit, truncating at last complete line..."
+  head -c "$DISCORD_LIMIT" "$CLEAN_REPORT" | sed '$d' > "${CLEAN_REPORT}.tmp"
+  printf '\n\n*[Truncated — full report in the attached file]*' >> "${CLEAN_REPORT}.tmp"
+  mv "${CLEAN_REPORT}.tmp" "$CLEAN_REPORT"
+fi
 
 echo "[Reporter] Payload size: $(stat -c%s "$CLEAN_REPORT") bytes"
 echo "[Reporter] First 5 lines of payload for emoji verification:"
