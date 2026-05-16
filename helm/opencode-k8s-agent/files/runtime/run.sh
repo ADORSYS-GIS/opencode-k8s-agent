@@ -94,7 +94,7 @@ if [ "$HTTP_CODE" != "200" ]; then
   echo "[Config] API test response:"
   cat /tmp/api_test.json || echo "(empty response)"
   echo "[Config] Curl debug log:"
-  grep -E "^<|> " /tmp/curl_debug.log | sed 's/Authorization: Bearer .*/Authorization: Bearer [REDACTED]/' | sed 's/^/  /'
+  grep -E "^<|> " /tmp/curl_debug.log 2>/dev/null | sed 's/Authorization: Bearer .*/Authorization: Bearer [REDACTED]/' | sed 's/^/  /' || true
   
   # Fallback logic for 403 Forbidden
   if [ "$HTTP_CODE" == "403" ]; then
@@ -129,10 +129,10 @@ which kubectl || echo "[Reporter] Warning: kubectl not found in PATH"
 echo "[Reporter] Testing kubernetes-mcp-server..."
 # kubernetes-mcp-server is a JSON-RPC server; running it without input and killing it is expected to show EOF.
 # We'll just verify it can start and print its initial state if any.
-timeout 2s /usr/local/bin/kubernetes-mcp-server --help >/dev/null 2>&1 && echo "[Reporter] MCP server binary is present and executable"
+timeout 2s /usr/local/bin/kubernetes-mcp-server --help >/dev/null 2>&1 && echo "[Reporter] MCP server binary is present and executable" || true
 
 echo "[Reporter] Starting opencode run..."
-opencode mcp list
+opencode mcp list || true
 
 # Run opencode with the prompt from the file
 # --thinking is intentionally omitted: with it enabled, opencode streams the model's
@@ -216,7 +216,10 @@ RESPONSE=$(curl -s -X POST "${APPRISE_API_URL}/notify" \
   -F "title=${TITLE}" \
   -F "urls=${APPRISE_URLS}" \
   -F "format=markdown" \
-  -F "attach=@${REPORT_FILE}")
+  -F "attach=@${REPORT_FILE}") || {
+  echo "[Reporter] Error: curl failed to reach Apprise API (connection error). Report not sent."
+  exit 1
+}
 
 echo "[Reporter] Apprise API response: $RESPONSE"
 
