@@ -1,11 +1,18 @@
 {
   "logLevel": "DEBUG",
+  "plugin": ["@vymalo/opencode-oauth2"],
   "provider": {
     "lightbridge": {
       "npm": "@ai-sdk/openai-compatible",
       "options": {
         "baseURL": "${OPENCODE_BASE_URL}",
-        "apiKey": "${OPENCODE_API_KEY}"
+        "oauth2": {
+          "issuer": "${OAUTH2_ISSUER}",
+          "clientId": "${OAUTH2_CLIENT_ID}",
+          "clientSecret": "${OAUTH2_CLIENT_SECRET}",
+          "scopes": ["openid"],
+          "authFlow": "client_credentials"
+        }
       },
       "models": {
         "${OPENCODE_MODEL}": {

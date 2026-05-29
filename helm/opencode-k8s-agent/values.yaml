@@ -24,12 +24,12 @@ opencode-k8s-agent:
             pullPolicy: IfNotPresent
           command: ["/bin/bash", "/config/run.sh"]
           env:
+            CI: "true"
             OPENCODE_MODEL: "minimax-m2p7"
             OPENCODE_BASE_URL: "https://api.ai.camer.digital/v1"
             APPRISE_API_URL: "http://apprise-api:8000"
-            KEYCLOAK_URL: "https://auth.verif.fyi"
-            KEYCLOAK_REALM: "camer-digital"
-            KEYCLOAK_CLIENT_ID: "opencode-k8s"
+            OAUTH2_ISSUER: "https://auth.verif.fyi/realms/camer-digital"
+            OAUTH2_CLIENT_ID: "opencode-k8s"
           envFrom:
             - secretRef:
                 name: opencode-k8s-agent-secret
@@ -64,7 +64,7 @@ opencode-k8s-agent:
 
   # secrets block intentionally omitted — the secret must be
   # created externally (e.g. via ESO) with the name opencode-k8s-agent-secret
-  # containing: OPENCODE_API_KEY, APPRISE_URLS, KEYCLOAK_CLIENT_SECRET
+  # containing: OAUTH2_CLIENT_SECRET, APPRISE_URLS
 
 # RBAC Configuration (custom - not part of app-template v4)
 rbac:
@@ -133,11 +133,9 @@ opencode:
   baseUrl: https://api.ai.camer.digital/v1
   thinking: true
 
-# Keycloak OIDC settings
-keycloak:
-  enabled: true
-  url: https://auth.verif.fyi
-  realm: camer-digital
+# OAuth2 settings (client credentials flow via @vymalo/opencode-oauth2 plugin)
+oauth2:
+  issuer: https://auth.verif.fyi/realms/camer-digital
   clientId: opencode-k8s
 
 # ConfigMap file contents (optional overrides)

@@ -8,6 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js 20 (required by opencode plugins such as @vymalo/opencode-oauth2)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install OpenCode CLI (via official install script)
 RUN curl -fsSL https://opencode.ai/install | bash && \
     find /root/.opencode/bin -name opencode -exec mv {} /usr/local/bin/ \;
