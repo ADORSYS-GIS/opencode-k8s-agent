@@ -20,7 +20,7 @@ opencode-k8s-agent:
         main:
           image:
             repository: ghcr.io/adorsys-gis/opencode-k8s-agent
-            tag: newwest
+            tag: v2
             pullPolicy: IfNotPresent
           command: ["/bin/bash", "/config/run.sh"]
           env:
