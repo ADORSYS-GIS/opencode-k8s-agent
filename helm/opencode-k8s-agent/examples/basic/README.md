@@ -20,13 +20,13 @@ helm install apprise-api ../../apprise-api
 
 ```bash
 kubectl create secret generic opencode-k8s-agent-secret \
-  --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+  --from-literal=OPENCODE_API_KEY="your-model-endpoint-api-key" \
   --from-literal=APPRISE_URLS="discord://webhook-id/webhook-token"
 ```
 
-> **Note**: `OPENCODE_API_KEY` is not required when using Keycloak OIDC (the default).
-> The agent fetches a token from Keycloak at runtime and uses it as the API key.
-> Only add `OPENCODE_API_KEY` to the secret if you are bypassing Keycloak entirely.
+> **Note**: `OPENCODE_API_KEY` is the model-endpoint bearer (sent as
+> `Authorization: Bearer`). Provide it in the secret, or inject it at runtime —
+> e.g. a projected Kubernetes ServiceAccount token — by overriding the container command.
 
 ### 3. Install the agent
 

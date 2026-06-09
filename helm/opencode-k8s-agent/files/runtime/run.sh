@@ -16,9 +16,11 @@ REPORT_FILE="/tmp/report.txt"
 # OpenCode looks for opencode.json in the current working directory.
 envsubst < /config/opencode.json > opencode.json
 
-# Debug: Show the generated config (with client secret masked)
+# Debug: Show the generated config with the credential masked. Redact BOTH the
+# static bearer (apiKey) and any clientSecret — the bearer can be a real API key
+# or a projected SA token, and pod logs are often shipped to a log store.
 echo "[Config] Generated opencode.json:"
-sed 's/"clientSecret": ".*"/"clientSecret": "[REDACTED]"/' opencode.json
+sed -E 's/"(apiKey|clientSecret)": "[^"]*"/"\1": "[REDACTED]"/g' opencode.json
 
 # Diagnostic: Check for tools
 echo "[Reporter] Verifying environment..."

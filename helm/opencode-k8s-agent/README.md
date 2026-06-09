@@ -61,7 +61,7 @@ helm install apprise-api ./helm/apprise-api
 
 ```bash
 kubectl create secret generic opencode-k8s-agent-secret \
-  --from-literal=KEYCLOAK_CLIENT_SECRET="your-keycloak-client-secret" \
+  --from-literal=OPENCODE_API_KEY="your-model-endpoint-api-key" \
   --from-literal=APPRISE_URLS="discord://webhook-id/webhook-token"
 ```
 
@@ -104,11 +104,11 @@ opencode-k8s-agent:
 Secrets must be created externally (e.g. via ESO) as `opencode-k8s-agent-secret` containing:
 
 ```yaml
-KEYCLOAK_CLIENT_SECRET: "your-keycloak-client-secret"
+OPENCODE_API_KEY: "your-model-endpoint-api-key"
 APPRISE_URLS: "discord://webhook-url"
 ```
 
-> **Note**: `OPENCODE_API_KEY` is **not** required when using Keycloak OIDC authentication (the default). The agent fetches a token from Keycloak at runtime and uses it as the API key. Only provide `OPENCODE_API_KEY` if you are bypassing Keycloak entirely.
+> **Note**: `OPENCODE_API_KEY` is the model-endpoint bearer (sent as `Authorization: Bearer`). Provide it in the secret, or inject it at runtime — e.g. a projected Kubernetes ServiceAccount token — by overriding the container `command`.
 
 ### Notification Channels
 
@@ -855,8 +855,8 @@ opencode-k8s-agent:
           readOnly: bool
   
   # No secrets block — secret must be created externally as opencode-k8s-agent-secret
-  # Required keys: KEYCLOAK_CLIENT_SECRET, APPRISE_URLS
-  # Optional key:  OPENCODE_API_KEY (only when not using Keycloak)
+  # Required keys: APPRISE_URLS, and OPENCODE_API_KEY unless that bearer is
+  # injected at runtime (e.g. a projected SA token via the container command)
 
 rbac:
   create: bool
@@ -876,15 +876,11 @@ configMaps:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `KEYCLOAK_CLIENT_SECRET` | Keycloak client secret for OIDC auth | Yes (when using Keycloak) | - |
+| `OPENCODE_API_KEY` | Model-endpoint bearer (sent as `Authorization: Bearer`) | Yes (unless injected at runtime) | - |
 | `APPRISE_URLS` | Notification URLs (space-separated) | Yes | - |
-| `OPENCODE_API_KEY` | Direct API key — only needed if **not** using Keycloak | No | - |
 | `OPENCODE_MODEL` | Model to use for analysis | No | `minimax-m2p7` |
 | `OPENCODE_BASE_URL` | API endpoint URL | No | `https://api.ai.camer.digital/v1` |
 | `APPRISE_API_URL` | Apprise API endpoint | No | `http://apprise-api:8000` |
-| `KEYCLOAK_URL` | Keycloak URL for OIDC auth | No | - |
-| `KEYCLOAK_REALM` | Keycloak realm | No | - |
-| `KEYCLOAK_CLIENT_ID` | Keycloak client ID | No | - |
 
 ## Examples
 

@@ -28,8 +28,10 @@ opencode-k8s-agent:
             OPENCODE_MODEL: "minimax-m2p7"
             OPENCODE_BASE_URL: "https://api.ai.camer.digital/v1"
             APPRISE_API_URL: "http://apprise-api:8000"
-            OAUTH2_ISSUER: "https://auth.verif.fyi/realms/camer-digital"
-            OAUTH2_CLIENT_ID: "opencode-k8s"
+            # OPENCODE_API_KEY is the model-endpoint bearer (sent as
+            # Authorization: Bearer by @ai-sdk/openai-compatible). Supply it via
+            # the secret below, or inject it at runtime (e.g. a projected k8s SA
+            # token) by overriding the container command.
           envFrom:
             - secretRef:
                 name: opencode-k8s-agent-secret
@@ -64,7 +66,8 @@ opencode-k8s-agent:
 
   # secrets block intentionally omitted — the secret must be
   # created externally (e.g. via ESO) with the name opencode-k8s-agent-secret
-  # containing: OAUTH2_CLIENT_SECRET, APPRISE_URLS
+  # containing: APPRISE_URLS (notification channels), and OPENCODE_API_KEY
+  # unless that bearer is injected at runtime (see the env note above).
 
 # RBAC Configuration (custom - not part of app-template v4)
 rbac:
@@ -132,11 +135,6 @@ opencode:
   model: minimax-m2p7
   baseUrl: https://api.ai.camer.digital/v1
   thinking: true
-
-# OAuth2 settings (client credentials flow via @vymalo/opencode-oauth2 plugin)
-oauth2:
-  issuer: https://auth.verif.fyi/realms/camer-digital
-  clientId: opencode-k8s
 
 # ConfigMap file contents (optional overrides)
 # If not specified, files from files/runtime/ and files/docs/ will be used
